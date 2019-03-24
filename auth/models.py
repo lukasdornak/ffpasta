@@ -367,8 +367,7 @@ class AbstractUser(AbstractBaseUser, PermissionsMixin):
 
     def send_password_reset_token(self, token):
         message = f'Dobrý den,\n\npro nastavení nového hesla do obednávkového systému na ffpasta.cz, klikněto, prosím, na níže uvedený odkaz.\nPokud jste si obnovu hesla nevyžál(a), ignorujte, prosím, tento e-mail a na odkaz neklikejte.\n\nhttps://www.ffpasta.cz/zmena-hesla/{ self.id }/{ token }/\n\nS přáním pěkného dne\nVáš tým FFpasta.cz'
-        # self.email_user(subject='Obnova hesla', message=message, from_email='info@ffpasta.cz')
-        print(message)
+        self.email_user(subject='Obnova hesla', message=message, from_email='info@ffpasta.cz')
         return True
 
 

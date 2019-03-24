@@ -59,15 +59,13 @@ class ContactForm(forms.Form):
     from_url = forms.HiddenInput()
 
     def send_mail(self):
-        message = 'Jméno: {}\n\nE-mail: {}\n\nDotaz: {}'.format(self.cleaned_data['name'], self.cleaned_data['email'], self.cleaned_data['message'])
-        print(message)
-        # return send_mail(
-        #     subject='Dotaz',
-        #     message=message,
-        #     from_email='admin@ffpasta.cz',
-        #     recipient_list=['lukasdornak@gmail.com', ],
-        # )
-        return True
+        message = f"Jméno: { self.cleaned_data['name'] }\n\nE-mail: { self.cleaned_data['email'] }\n\nDotaz: { self.cleaned_data['message'] }"
+        return send_mail(
+            subject='Dotaz',
+            message=message,
+            from_email='admin@ffpasta.cz',
+            recipient_list=['lukasdornak@gmail.com', ],
+        )
 
 
 class CustomerAdminForm(forms.ModelForm):
@@ -89,8 +87,7 @@ class CustomerAdminForm(forms.ModelForm):
             password = User.objects.make_random_password(length=6)
             user = User.objects.create_user(email, password)
             message = f'Dobrý den,\n\nvytvořili jsme Vám přístup do našeho objednávkového systému.\nPro přihlášení použijte svou e-mailovou adresu:\n\n{ user.email }\n\na heslo:\n\n{ password }\n\nPo přihlášení budete vyzváni k nastavení nového hesla.'
-            print(message)
-            # user.email_user(subject='registrace FFpasta', message=message, from_email='info@ffpasta.cz')
+            user.email_user(subject='registrace FFpasta', message=message, from_email='info@ffpasta.cz')
             self.cleaned_data['user'] = user.id
         return super().clean()
 
