@@ -1,0 +1,78 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0">
+    <title>FFpasta</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="{%  static '/ffpasta/js/scroll-script.js' %}"></script>
+    <script src="{%  static '/ffpasta/js/svg-script.js' %}"></script>
+    <link rel="stylesheet" href="{%  static '/ffpasta/css/style.css' %}">
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId            : {{ og_appId }},
+          autoLogAppEvents : true,
+          xfbml            : true,
+          version          : 'v2.10'
+        });
+        FB.AppEvents.logPageView();
+      };
+
+      (function(d, s, id){
+         var js, fjs = d.getElementsByTagName(s)[0];
+         if (d.getElementById(id)) {return;}
+         js = d.createElement(s); js.id = id;
+         js.src = "//connect.facebook.net/en_US/sdk.js";
+         fjs.parentNode.insertBefore(js, fjs);
+       }(document, 'script', 'facebook-jssdk'));
+    </script>
+</head>
+<body>
+    <section id="id-uvod"><div id="motto">
+        <h1 ><span>Vyrábíme těstoviny</span><span>jen z kvalitní suroviny.</span></h1>
+    </div></section>
+    {% for section in object_list %}{% if not forloop.counter|divisibleby:2 %}
+    <div class="blackboard">
+        <svg class="arrow_top" viewBox="0 0 20 11" preserveAspectRatio="none">
+            <polygon points="0,0 0,1 10,11 20,1 20,0" style="fill: #EAE4DC; stroke-width:0"></polygon>
+        </svg>{% endif %}
+        <section id="id-{{ section.slug }}">{% if section.widget %}
+            {% include section.get_widget.template_name with widget_context=section.widget_context %}{% elif forloop.counter == 4 and section.text %}
+            <div class="circs">
+                <img src="{% static '/ffpasta/img/circ1.jpg' %}" class="circ" id="c1">
+                <h1 class="bordered">{{ section.headline }}</h1>
+                <div class="text">{{ section.text|safe }}</div>
+                <img src="{% static '/ffpasta/img/circ2.jpg' %}" class="circ" id="c2">
+            </div>{% elif section.text %}
+            <div class="page">
+                <h1 class="bordered">{{ section.headline }}</h1>
+                <div class="text">{{ section.text|safe }}</div>
+            </div>{% endif %}
+        </section>{% if not forloop.counter|divisibleby:2 and not forloop.last %}
+        <svg class="arrow_bottom" viewBox="0 0 20 11" preserveAspectRatio="none">
+            <polygon points="0,0 10,10 20,0 20,11 0,11" style="fill: #EAE4DC; stroke-width:0"></polygon>
+        </svg></div>{% elif forloop.last %}
+    </div>{% endif %}{% endfor %}
+    <div id="modal">
+    </div>
+    <header>
+        <div id="menu_button">
+            <div class="bar1"></div>
+            <div class="bar2"></div>
+            <div class="bar3"></div>
+        </div>
+        <div><a href="#uvod"><img src="{%  static '/ffpasta/img/logo.png' %}" id="logo" alt="FFpasta logo"></a></div>
+        <nav class="hidden">{% for section in section_list %}
+            <a href="#{{ section.slug }}">{{ section.link|lower }}</a>{% endfor %}
+            <a href="/objednavky/">objednávky</a>
+        </nav>
+        <div id="social_head">
+            <a href="https://www.instagram.com/ffpasta/" target="_blank"><img src="{%  static '/ffpasta/img/social/instagram_head.png' %}"></a>
+            <a href="https://www.facebook.com/FFpasta/" target="_blank"><img src="{%  static '/ffpasta/img/social/facebook_head.png' %}"></a>
+        </div>
+    </header>
+</body>
+</html>

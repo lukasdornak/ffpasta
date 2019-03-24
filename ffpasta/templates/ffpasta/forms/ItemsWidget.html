@@ -1,0 +1,101 @@
+
+        <div class="new_order_row">
+            <div>Položka</div>
+            <div>Množství</div>
+        </div>
+        <div id="items_formset">{% for item in initial_items %}
+            <div class="new_order_row">{% for field in form.visible_fields %}{% if forloop.counter <= 2 %}
+                <div>{{ field.errors }}{{ field }}{% if forloop.counter == 2 %}{% for field in form.hidden_fields %}{{ field }}{% endfor %}{% endif %}</div>{% endif %} {% endfor %}
+            </div>{% endfor %}
+        </div>
+        <div id="new_order_form_buttons">
+            <div id="add_item" class="bordered">+</div>
+            <div id="remove_item" class="bordered">−</div>
+        </div>
+
+
+
+<script>
+var dates = {{ view.dates|safe }};
+
+
+function refreshOptions(){
+    $('option').css('display', 'initial');
+    $('select').each(function(index){
+        $('option[value="' + $(this).val() + '"]').not(':selected').css('display', 'none');
+    });
+}
+
+function addItem(){
+    var n = $('#items_formset .new_order_row').length;
+    var lastForm = $('#items_formset .new_order_row:last-child').html();
+    var nextForm = lastForm.split('volume_set-' + (n-1));
+    $('#items_formset').append('<div class="new_order_row">' + nextForm.join('volume_set-' + n).replace('selected', '') + '</div>');
+    $('input[name=volume_set-TOTAL_FORMS]').val(n+1);
+    $('#items_formset .new_order_row:last-child input[type="number"]').val('');
+}
+
+function removeItem() {
+    var n = $('#items_formset .new_order_row').length;
+    $('#items_formset .new_order_row:last-child').remove();
+    $('input[name=volume_set-TOTAL_FORMS]').val(n-1);
+}
+
+$(function(){
+    $('#id_date_required').datepicker({
+        beforeShowDay: function(date) {
+            var date_string = jQuery.datepicker.formatDate('yy-mm-dd', date);
+            return [dates.indexOf(date_string) !== -1];
+        }
+    });
+    $.datepicker.regional['cs'] = {
+        closeText: 'Zavřít',
+        prevText: '&#x3c;Dříve',
+        nextText: 'Později&#x3e;',
+        currentText: 'Nyní',
+        monthNames: ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen',
+            'září', 'říjen', 'listopad', 'prosinec'
+        ],
+        monthNamesShort: ['led', 'úno', 'bře', 'dub', 'kvě', 'čer', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'],
+        dayNames: ['neděle', 'pondělí', 'úterý', 'středa', 'čtvrtek', 'pátek', 'sobota'],
+        dayNamesShort: ['ne', 'po', 'út', 'st', 'čt', 'pá', 'so'],
+        dayNamesMin: ['ne', 'po', 'út', 'st', 'čt', 'pá', 'so'],
+        weekHeader: 'Týd',
+        dateFormat: "dd.mm.yy",
+        firstDay: 1,
+        isRTL: false,
+        showMonthAfterYear: false,
+        yearSuffix: ''
+    };
+    $.datepicker.setDefaults($.datepicker.regional['cs']);
+    $('#add_item').click(function(){
+        if($('#id_volume_set-0-item option').length > $('#items_formset .new_order_row').length){
+            addItem();
+            refreshOptions();
+        }
+    });
+    $('#remove_item').click(function(){
+        if($('#items_formset .new_order_row').length > 1) {
+            removeItem();
+            refreshOptions();
+        }
+    });
+    $(document).on('change','select', function(){
+        refreshOptions();
+    });
+    $("form").submit(function(event) {
+        var initial = $('#id_volume_set-INITIAL_FORMS').val();
+        console.log(initial);
+        var total = $('#id_volume_set-TOTAL_FORMS').val();
+        console.log(total);
+        if (total<initial){
+            for(i=total; i<initial; i++){
+                $('#items_formset').append('<input type="checkbox" name="volume_set-' + i + '-DELETE" id="id_volume_set-' + i + '-DELETE" checked=checked>');
+            }
+        }
+        $('input[name=volume_set-TOTAL_FORMS]').val(initial);
+        console.log($('form').html());
+        return true;
+    });
+})
+</script>

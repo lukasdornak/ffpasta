@@ -1,0 +1,51 @@
+        <svg width="100%" height="100%" id="items_svg" class="filtering" stroke-linecap="round"></svg>
+        <div id="items_page" class="filtering">
+            <div id="items_head" class="headline_group">
+                <h2 class="from_768 bordered">krátké</h2>
+                <h1 class="connected bordered">{{ section.headline }}</h1>
+                <h2 class="from_768 bordered">dlouhé</h2>
+            </div>
+            <div class=" items">
+                <div class="item_type">
+                    <h2 class="to_767 bordered">krátké</h2>
+                    <div class="item_group">
+                    {% for pasta in widget_context.short_pasta_list %}
+                        <div id="id-{{ pasta.slug }}" class="item">
+                            <a href="#{{ pasta.slug }}"></a>
+                            <div class="item_div" style="background-image:url('{{ pasta.img_url }}')">
+                                <img src="{{ pasta.img_url }}" class="item_img">
+                            </div>
+                            <h3 class="item_name">{{ pasta.name|capfirst }}</h3>
+                        </div>{%  endfor %}
+                    </div>
+                </div>
+                <div class="item_type">
+                    <h2 class="to_767 bordered">dlouhé</h2>
+                    <div class="item_group">
+                    {% for pasta in widget_context.long_pasta_list %}
+                        <div id="id-{{ pasta.slug }}" class="item">
+                            <a href="#{{ pasta.slug }}"></a>
+                            <div class="item_div" style="background-image:url('{{ pasta.img_url }}')">
+                                <img src="{{ pasta.img_url }}" class="item_img">
+                            </div>
+                            <h3 class="item_name">{{ pasta.name|capfirst }}</h3>
+                        </div>{%  endfor %}
+                    </div>
+                </div>
+            </div>
+            <h1 class="connected bordered">pesta a hořčice</h1>
+            <div class="items single_type">
+                <div class="item_type">
+                    <div class="item_group" style="margin-top: 20px; margin-bottom: -40px">
+                    {% for sauce in widget_context.sauce_list %}
+                        <div id="id-{{ sauce.slug }}" class="item">
+                            <a href="#{{ sauce.slug }}"></a>
+                            <div class="item_div" style="background-image:url('{{ sauce.img_url }}')">
+                                <img src="{{ sauce.img_url }}" class="item_img">
+                            </div>
+                            <h3 class="item_name">{{ sauce.name|capfirst }}</h3>
+                        </div>{%  endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>

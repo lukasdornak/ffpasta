@@ -1,0 +1,119 @@
+{% extends 'ffpasta/base.html' %}{% load static %}
+
+{% block head %}
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <link rel="stylesheet" href="/resources/demos/style.css">
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+{% endblock %}
+
+{% block title %}{{ block.super }} | Nová objednávka{% endblock %}
+
+{% block header_left %}<a href="/objednavky/" class="bordered" style="line-height: 3em">zpět na přehled</a>{% endblock %}
+
+{% block content %}
+    <h1 class="bordered">Nová objednávka</h1>
+    <form id="new_order_form" method="post" autocomplete="off">
+        {% csrf_token %}
+        <div><label for="{{ form.date_required.id_for_label }}">Požadované {{ form.date_required.label|lower }}</label></div>{% for error in form.date_required.errors %}
+        <div>{{ error }}</div>{% endfor %}
+        <div class="new_order_row">
+            <div>{{ form.date_required }}</div>
+            <div><div id="next_delivery" class="bordered">příští závoz</div></div>
+        </div>{% for error in formset.non_form_errors %}
+        <div>{{ error }}</div>{% endfor %}
+        <div class="new_order_row">
+            <div>Položka</div>
+            <div>Množství</div>
+        </div>
+        <div id="items_formset">
+        {{ formset.management_form }}{% for form in formset %}
+            <div class="new_order_row">{% for field in form.visible_fields %}{% if forloop.counter <= 2 %}
+                <div>{{ field.errors }}{{ field }}{% if forloop.counter == 2 %}{% for field in form.hidden_fields %}{{ field }}{% endfor %}{% endif %}</div>{% endif %} {% endfor %}
+            </div>{% endfor %}
+        </div>
+        <div id="new_order_form_buttons">
+            <div id="add_item" class="bordered">+</div>
+            <div id="remove_item" class="bordered">−</div>
+        </div>
+        <div><input type="submit" value="Pokračovat k objednání"></div>
+
+    </form>
+    <script>
+var dates = {{ view.dates|safe }};
+
+function nextDelivery() {
+    var date = dates[0].split('-');
+    $('#id_date_required').val(date[2] + '.' + date[1] + '.' + date[0]);
+}
+
+function refreshOptions(){
+    $('option').css('display', 'initial');
+    $('select').each(function(index){
+        $('option[value="' + $(this).val() + '"]').not(':selected').css('display', 'none');
+    });
+}
+
+function addItem(n){
+    var lastForm = $('#items_formset .new_order_row:last-child').html();
+    var newForm = lastForm.split('form-' + (n-1));
+    $('#items_formset').append('<div class="new_order_row">' + newForm.join('form-' + n).replace('selected', '') + '</div>');
+    $('input[name=form-TOTAL_FORMS]').val(n+1);
+    $('#items_formset .new_order_row:last-child input[type="number"]').val('');
+}
+
+function removeItem(n) {
+    $('#items_formset .new_order_row:last-child').remove();
+    $('input[name=form-TOTAL_FORMS]').val(n-1);
+}
+
+$(function(){
+    $('#id_date_required').datepicker({
+        beforeShowDay: function(date) {
+            var date_string = jQuery.datepicker.formatDate('yy-mm-dd', date);
+            return [dates.indexOf(date_string) !== -1];
+        }
+    });
+    $.datepicker.regional['cs'] = {
+        closeText: 'Zavřít',
+        prevText: '&#x3c;Dříve',
+        nextText: 'Později&#x3e;',
+        currentText: 'Nyní',
+        monthNames: ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen',
+            'září', 'říjen', 'listopad', 'prosinec'
+        ],
+        monthNamesShort: ['led', 'úno', 'bře', 'dub', 'kvě', 'čer', 'čvc', 'srp', 'zář', 'říj', 'lis', 'pro'],
+        dayNames: ['neděle', 'pondělí', 'úterý', 'středa', 'čtvrtek', 'pátek', 'sobota'],
+        dayNamesShort: ['ne', 'po', 'út', 'st', 'čt', 'pá', 'so'],
+        dayNamesMin: ['ne', 'po', 'út', 'st', 'čt', 'pá', 'so'],
+        weekHeader: 'Týd',
+        dateFormat: "dd.mm.yy",
+        firstDay: 1,
+        isRTL: false,
+        showMonthAfterYear: false,
+        yearSuffix: ''
+    };
+    $.datepicker.setDefaults($.datepicker.regional['cs']);
+    $('#next_delivery').click(function () {
+        nextDelivery();
+    });
+    $('#add_item').click(function(){
+        var n = $('#items_formset .new_order_row').length;
+        if($('#id_form-0-item option').length > n){
+            addItem(n);
+            refreshOptions();
+        }
+    });
+    $('#remove_item').click(function(){
+        var n = $('#items_formset .new_order_row').length;
+        if(n > 1) {
+            removeItem(n);
+            refreshOptions();
+        }
+    });
+    $(document).on('change','select', function(){
+        refreshOptions();
+    });
+})
+    </script>
+{% endblock %}

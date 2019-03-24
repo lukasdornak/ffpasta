@@ -1,0 +1,8 @@
+{
+    "ogUrl": "https://{{ domain }}/#{{ object.slug }}",
+    "ogTitle": "FFpasta | {{ object.og_title }}",
+    "ogType": "article",
+    "ogImage": "https://{{ domain }}{{ object.img_url }}",
+    "ogDescription": "{{ object.og_description }}",
+    "body": "{% block content %}{% endblock %}"
+}

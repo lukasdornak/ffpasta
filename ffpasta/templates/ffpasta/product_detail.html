@@ -1,0 +1,20 @@
+{% extends 'ffpasta/product_detail.json' %}
+
+{#<div>#}
+{#    <div id='nav_buttons'>#}
+{#        <a href='/#druhy_testovin' id='close_button' ><div class='cross'>#}
+{#            <div class='bar1'></div>#}
+{#            <div class='bar2'></div>#}
+{#            <div class='bar3'></div>#}
+{#        </div></a>#}
+{#    </div>#}
+{#    <div id='item_detail'>#}
+{#        <img id='item_detail_img' src='{{ object.img_url }}'>#}
+{#        <h1 class='item_name'>{{ object.name|capfirst }}</h1>#}
+{#        <div class='text'>#}
+{#            {{ object.description|safe }}#}
+{#        </div>#}
+{#    </div>#}
+{#</div>#}
+
+{% block content %}<div><div id='nav_buttons'><a href='/#druhy_testovin' id='close_button' ><div class='cross'><div class='bar1'></div><div class='bar2'></div><div class='bar3'></div></div></a></div><div id='item_detail'><img id='item_detail_img' src='{{ object.img_url }}'><h1 class='item_name'>{{ object.name|capfirst }}</h1><div class='text'>{{ object.one_line_description|safe }}</div></div></div>{% endblock %}

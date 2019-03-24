@@ -1,0 +1,17 @@
+        <svg width="100%" height="100%" id="reasons_svg" stroke-linecap="round"></svg>
+        <div class="page">{% if widget_context.object_list %}
+            <div id="reasons_head" class="headline_group">
+                <h2 class="bordered">FFpasta</h2>
+                <h1 class="bordered" id="first_pikto">{{ section.headline }}</h1>
+                <h2 class="bordered">ostatní</h2>
+            </div>{% for reason in widget_context.object_list %}
+            <div class="reason_row {% cycle 'odd' 'even' %}">
+                <div>{{ reason.ffpasta }}</div>
+                <div>
+                    <h4><span class="reason_header">{{ reason.header }}</span></h4>
+                    <img class="pikto" src="{{ reason.img_url }}">
+                </div>
+                <div>{{ reason.others }}</div>
+            </div>{% endfor %}{% endif %}{% if section.text %}
+            <div class="text">{{ section.text|safe }}</div>{% endif %}
+        </div>

@@ -1,0 +1,8 @@
+{% extends 'admin/change_form.html' %}
+
+{% block submit_buttons_bottom %}{% if original.status >= 2 and original.customer.id_idoklad  and not original.invoiced %}
+    <div class="submit-row">
+        <input type="submit" value="Uložit a fakturovat" name="invoice">
+    </div>{% endif %}
+    {{ block.super }}
+{% endblock %}

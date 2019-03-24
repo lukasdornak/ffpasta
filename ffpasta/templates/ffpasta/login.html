@@ -1,0 +1,34 @@
+{% extends 'ffpasta/base.html' %}{% load static %}
+
+{% block title %}Přihlášení{% endblock %}
+
+{% block header_right %}{% endblock %}
+
+{% block content %}
+    <div class="halves">
+        <div>
+            <h1 class="bordered">Přihlaste se</h1>
+            <p>Jste-li náš registrovaný odběratel,<br />přihlaste se a objednávejte.</p>
+            <form method="post">
+                {% csrf_token %}
+                <table>{% for field in form %}
+                    <tr>
+                        <td><label for="{{ field.id_for_label }}">{{ field.label }}</label></td>
+                        <td>{{ field.errors }}{{ field }}</td>
+                    </tr>{% endfor %}
+                    <tr>
+                        <td colspan="2"><input type="submit" value="Přihlásit se"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2"><a href="/obnova-hesla/" style="font-size: 16px">zapomenuté heslo</a></td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+        <div>
+            <h1 class="bordered">Nebo nás kontaktujte</h1>
+            <p>Nemáte-li ještě u nás registraci, ale chcete<br />okusit naše domácí těstoviny, napište nám.</p>
+            {% include 'ffpasta/contact.html' with form=view.contact_form from_url='/prihlaseni/' %}
+        </div>
+    </div>
+{% endblock %}

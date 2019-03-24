@@ -1,0 +1,25 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0">
+    <title>{% block title %}FFpasta{% endblock %}</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    {% block head %}{% endblock %}
+    <link rel="stylesheet" href="{%  static '/ffpasta/css/style.css' %}">
+</head>
+<body><div id="max_width">
+    <div id="orders_header">
+        <div>{% block header_left %}{% endblock %}</div>
+        <div>
+            <a href="/"><img src="{% static '/ffpasta/img/logo.png' %}" id="logo" alt="FFpasta logo"></a>
+        </div>
+        <div>{% block header_right %}
+            <span id="user_mail">{{ view.request.user.email }}</span><br>
+            <a href="/prihlaseni/" class="bordered">odhlásit se</a>{% endblock %}
+        </div>
+    </div>
+    {% block content %}{% endblock %}
+</div></body>
+</html>

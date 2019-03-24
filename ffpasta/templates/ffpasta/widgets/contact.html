@@ -1,0 +1,16 @@
+{% load static %}
+        <div class="page">
+            <h1 class="bordered">{{ section.headline }}</h1>
+            <div class="halves">
+                <div>
+                    {% include 'ffpasta/contact.html' with form=widget_context.form from_url='/#kontakt'%}
+                </div>
+                <div id="kontakt">
+                    <div>{{ section.text|safe }}</div>
+                    <div id="social_foot">
+                        <a href="https://www.instagram.com/ffpasta/"><img src="{% static '/ffpasta/img/social/instagram_foot.png' %}"></a>
+                        <a href="https://www.facebook.com/FFpasta/"><img src="{% static '/ffpasta/img/social/facebook_foot.png' %}"></a>
+                    </div>
+                </div>
+            </div>
+        </div>

@@ -1,0 +1,16 @@
+{% if messages %}{% for message in messages %}
+<p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+{% endfor %}{% endif %}
+<form method="post" action="/kontakt/">
+    {% csrf_token %}
+    <input type="hidden" name="from_url" value="{{ from_url }}">
+    <table><tbody>
+        {% for field in form %}<tr>
+            <td><label for="{{ field.id_for_label }}">{{ field.label }}</label></td>
+            <td>{{ field.errors }}{{ field }}</td>
+        </tr>{% endfor %}
+        <tr>
+            <td colspan="2"><input type="submit" value="Odeslat"></td>
+        </tr>
+    </tbody></table>
+</form>
