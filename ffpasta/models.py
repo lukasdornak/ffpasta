@@ -205,7 +205,7 @@ class Order(models.Model):
             'Amount': item.quantity,
             'Name': item.name,
             'Unit': item.item.get_unit(),
-            'UnitPrice': item.unit_price } for item in self.get_items()]
+            'UnitPrice': float(item.unit_price) } for item in self.get_items()]
 
     def invoice(self):
         response = idoklad.post_invoice(order=self)
