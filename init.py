@@ -131,16 +131,16 @@ sections = [{
 }]
 
 
-if not models.Price.objects.all().exists():
+if not models.PriceCategory.objects.all().exists():
     for p in prices:
         print(p['name'])
-        models.Price(name=p['name'], default_price=p['default_price']).save()
+        models.PriceCategory(name=p['name'], default_price=p['default_price']).save()
 
 if not models.Pasta.objects.all().exists():
-    price = models.Price.objects.first()
+    price = models.PriceCategory.objects.first()
     for p in pastas:
         print(p['name'])
-        models.Pasta(name=p['name'], description=p['description'], img=p['img'], length=p['length'], price=price,
+        models.Pasta(name=p['name'], description=p['description'], img=p['img'], length=p['length'], pricecategory=price,
                        published=True, active=True).save()
 
 if not models.Difference.objects.all().exists():

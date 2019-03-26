@@ -23,7 +23,7 @@ class Home(ListView):
         for obj in self.object_list:
             if obj.widget:
                 obj.widget_context = obj.get_widget().get_context_data(self)
-        context_data['og_appId'] = settings.OG_APP_ID
+        context_data['og_appId'] = settings.FB_APP_ID
         return context_data
 
 

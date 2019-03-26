@@ -58,8 +58,8 @@ function getItem(item){
         url: item,
         cache: true
     }).done(function( response ) {
-        var data = JSON.parse(response);
-        $( "#modal" ).html( data['body'] );
+        ogOverride = JSON.parse(response);
+        $( "#modal" ).html( ogOverride['body'] );
     });
 }
 
