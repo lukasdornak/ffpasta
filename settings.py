@@ -120,4 +120,4 @@ IDOKLAD_AUTH_URL = 'https://app.idoklad.cz/identity/server/connect/token'
 IDOKLAD_CLIENT_ID = os.environ.get('IDOKLAD_CLIENT_ID', 'not client id')
 IDOKLAD_CLIENT_SECRET = os.environ.get('IDOKLAD_CLIENT_SECRET', 'not client secret')
 
-FB_APP_ID = os.environ.get('OG_APP_ID', None)
+FB_APP_ID = os.environ.get('FB_APP_ID', None)
