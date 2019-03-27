@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView
 from django.core.cache import cache
 from django.http import HttpResponseRedirect, Http404
+from django.shortcuts import render
 from django.utils.html import mark_safe
 from django.utils.crypto import get_random_string
 from django.views.generic import FormView, ListView, DetailView, UpdateView, TemplateView
@@ -42,9 +43,18 @@ class ContactView(FormView):
 class LoginView(LoginView):
     template_name = 'ffpasta/login.html'
     contact_form = forms.ContactForm
+
     def get(self, request, *args, **kwargs):
         logout(request)
         return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        password = request.POST.get('password')
+        if len(password) < 8:
+            super().post(request, *args, **kwargs)
+            messages.add_message(self.request, messages.INFO, 'Vítejte v objednávkovém systému FFpasta. Než začnete objednávat, nastavte si, prosím, nové heslo. Děkujeme, za pochopení')
+            return HttpResponseRedirect('/zmena-hesla/')
+        return super().post(request, *args, **kwargs)
 
 
 class ProductDetailView(DetailView):
@@ -87,7 +97,7 @@ class OrderCreateUpdateView(LoginRequiredMixin, CustomerRequiredMixin, UpdateVie
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         if self.object:
-            self.formset = self.formset_class(initial=models.Item.objects.filter(order=self.object).values('item', 'quantity'))
+            self.formset = self.formset_class(initial=models.Item.objects.filter(order=self.object).values('product', 'quantity'))
         else:
             self.formset = self.formset_class()
         return super().get(request, *args, **kwargs)
@@ -150,6 +160,12 @@ class OrderFinishView(LoginRequiredMixin, CustomerRequiredMixin, UpdateView):
         self.initial = {'datetime_ordered': datetime.now()}
         return super().post(request, *args, **kwargs)
 
+    def form_valid(self, form):
+        token = get_random_string(length=32)
+        cache.set(f'MANAGE_TOKEN_FOR_ORDER_{ self.object.id }', token, 3600)
+        self.object.send_manage_token_to_admins(token)
+        return super().form_valid(form)
+
 
 class ForgottenPasswordView(FormView):
     form_class = forms.ForgottenPasswordForm
@@ -202,3 +218,39 @@ class ChangePasswordView(FormView):
         else:
             raise Http404("Uživatel nenalezen.")
         return super().form_valid(form)
+
+
+def reject_order(request, id, token):
+    if id and token:
+        title = 'Objednávka NEodmítnuta'
+        if token == cache.get(f'MANAGE_TOKEN_FOR_ORDER_{ id }'):
+            order = models.Order.objects.filter(id=id).first()
+            err_msg = order.do_reject()
+            if err_msg:
+                messages.add_message(request, messages.ERROR, err_msg)
+            else:
+                messages.add_message(request, messages.SUCCESS, f'Objednávka č. { order.id } byla úspěšně odmítnuta.')
+                title = 'Objednávka odmítnuta'
+        else:
+            messages.add_message(request, messages.ERROR, mark_safe('Je mi líto, ale Tvému tokenu vypršela platnost.<br>Objednávku můžeš odmítnout běžným způsobem <a href=/objednavky/>v administraci</a>.'))
+        return render(request, 'ffpasta/message.html', context={'title':title})
+    else:
+        raise Http404("Stránka nenalezena.")
+
+
+def confirm_order(request, id, token):
+    if id and token:
+        title = 'Objednávka NEpotvrzena'
+        if token == cache.get(f'MANAGE_TOKEN_FOR_ORDER_{ id }'):
+            order = models.Order.objects.filter(id=id).first()
+            err_msg = order.do_confirm()
+            if err_msg:
+                messages.add_message(request, messages.ERROR, err_msg)
+            else:
+                messages.add_message(request, messages.SUCCESS, f'Objednávka č. { order.id } byla úspěšně potvrzena.')
+                title = 'Objednávka potvrzena'
+        else:
+            messages.add_message(request, messages.ERROR, mark_safe('Je mi líto, ale Tvému tokenu vypršela platnost.<br>Objednávku můžeš potvrdit běžným způsobem <a href=/objednavky/>v administraci</a>.'))
+        return render(request, 'ffpasta/message.html', context={'title':title})
+    else:
+        raise Http404("Stránka nenalezena.")

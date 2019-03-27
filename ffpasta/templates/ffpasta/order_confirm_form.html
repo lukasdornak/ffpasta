@@ -31,8 +31,8 @@
                 </td>
             </tr>{% for item in object.item_set.all %}
             <tr class="{% if order.is_history %}history{% elif order.status >= 2 %}confirmed{% endif %}{% if not order.status %} rejected{% endif %}">
-                <td>{{ item.item }}</td>
-                <td style="text-align: right">{{ item.quantity }}</td>
+                <td>{{ item.product }}</td>
+                <td style="text-align: right">{{ item.quantity }} {{ item.product.get_unit }}</td>
                 <td style="text-align: right">{{ item.unit_price }} Kč</td>
                 <td style="text-align: right">{{ item.get_price }} Kč</td>
             </tr>{% endfor %}

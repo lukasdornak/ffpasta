@@ -13,12 +13,14 @@ urlpatterns = [
     path('obnova-hesla/', views.ForgottenPasswordView.as_view()),
     path('zmena-hesla/', views.ChangePasswordView.as_view()),
     path('zmena-hesla/<int:id>/<slug:token>/', views.ChangePasswordView.as_view()),
+    path('potvrdit-objednavku/<int:id>/<slug:token>/', views.confirm_order),
+    path('odmitnout-objednavku/<int:id>/<slug:token>/', views.reject_order),
     path('prihlaseni/', views.LoginView.as_view()),
     path('objednavky/', views.OrderListView.as_view()),
     path('nova-objednavka/', views.OrderCreateUpdateView.as_view()),
     path('dokonceni-objednavky/', views.OrderFinishView.as_view()),
     path('admin/', admin.site.urls),
-    path('<slug:slug>/', views.ProductDetailView.as_view()),
+    path('ajax/<slug:slug>/', views.ProductDetailView.as_view()),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

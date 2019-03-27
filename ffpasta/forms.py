@@ -46,7 +46,7 @@ def clean(self):
     if not hasattr(self, 'cleaned_data'):
         raise ValidationError('Opravte prosím, níže uvedené chyby.')
     for form in self.cleaned_data:
-        if hasattr(form['item'], 'pasta') and not form.get('DELETE', None):
+        if hasattr(form['product'], 'pasta') and not form.get('DELETE', None):
             pasta_quantity += form['quantity']
     if pasta_quantity > 0 and pasta_quantity < 5:
         raise ValidationError('Minimální množství těstovin je 5kg')
@@ -59,7 +59,9 @@ class ContactForm(forms.Form):
     from_url = forms.HiddenInput()
 
     def send_mail(self):
-        message = f"Jméno: { self.cleaned_data['name'] }\n\nE-mail: { self.cleaned_data['email'] }\n\nDotaz: { self.cleaned_data['message'] }"
+        message = f"Jméno: { self.cleaned_data['name'] }\n\n" \
+                  f"E-mail: { self.cleaned_data['email'] }\n\n" \
+                  f"Dotaz: { self.cleaned_data['message'] }"
         return send_mail(
             subject='Dotaz',
             message=message,
@@ -77,24 +79,31 @@ class CustomerAdminForm(forms.ModelForm):
 
     def clean_user(self):
         data = self.cleaned_data.get('user')
-        if User.objects.filter(email=data).exists():
-            raise ValidationError('Uživatel s tímto e-mailem již existuje.')
+        if models.Customer.objects.filter(user__email=data).exists():
+            raise ValidationError('Zákazník s tímto e-mailem již existuje.')
         return data
 
     def clean(self):
         if 'user' in self.cleaned_data:
             email = self.cleaned_data.get('user')
-            password = User.objects.make_random_password(length=6)
-            user = User.objects.create_user(email, password)
-            message = f'Dobrý den,\n\nvytvořili jsme Vám přístup do našeho objednávkového systému.\nPro přihlášení použijte svou e-mailovou adresu:\n\n{ user.email }\n\na heslo:\n\n{ password }\n\nPo přihlášení budete vyzváni k nastavení nového hesla.'
-            user.email_user(subject='registrace FFpasta', message=message, from_email='info@ffpasta.cz')
-            self.cleaned_data['user'] = user.id
+            user = User.objects.filter(email=email).first()
+            if user:
+                self.cleaned_data['user'] = user.id
+            else:
+                password = User.objects.make_random_password(length=6)
+                user = User.objects.create_user(email, password)
+                message = f'Dobrý den,\n\nvytvořili jsme Vám přístup do našeho objednávkového systému.\n' \
+                          f'Pro přihlášení použijte svou e-mailovou adresu:\n\n{ user.email }\n\na heslo:\n\n' \
+                          f'{ password }\n\nPo přihlášení budete vyzváni k nastavení nového hesla.\n\n' \
+                          f's přáním pěknéh dne\nVáš tým FFpasta.cz'
+                user.email_user(subject='registrace FFpasta', message=message, from_email='info@ffpasta.cz')
+                self.cleaned_data['user'] = user.id
         return super().clean()
 
 
 def save(self, order):
     for form in self.cleaned_data:
-        models.Item.objects.create(order=order, item=form['item'], quantity=form['quantity'])
+        models.Item.objects.create(order=order, product=form['product'], quantity=form['quantity'])
 
 
 class ItemForm(forms.Form):
@@ -102,7 +111,7 @@ class ItemForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.use_required_attribute = True
 
-    item = ProductChoiceField(queryset=models.Product.objects.all())
+    product = ProductChoiceField(queryset=models.Product.objects.all())
     quantity = forms.IntegerField(max_value=250, min_value=1)
     use_required_attribute = True
 
@@ -112,11 +121,12 @@ ItemFormSet.save = save
 
 
 class ItemAdminForm(forms.ModelForm):
-    item = ProductChoiceField(queryset=models.Product.objects.all())
+    product = ProductChoiceField(queryset=models.Product.objects.all())
+    quantity = forms.IntegerField(max_value=1000, min_value=1)
 
     class Meta:
         model = models.Item
-        fields = ('item', 'quantity', 'unit_price')
+        fields = ('product', 'quantity', 'unit_price')
 
 
 ItemAdminFormSet = forms.inlineformset_factory(models.Order, models.Item, form=ItemAdminForm, extra=1)
@@ -134,3 +144,12 @@ class ChangePasswordForm(forms.Form):
             return cleaned_data
         else:
             raise ValidationError('Hesla se neshodují')
+
+class StockTransactionForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['transaction_type'].choices = [models.StockTransaction.TYPE_CHOICES[0], models.StockTransaction.TYPE_CHOICES[2]]
+
+    class Meta:
+        model = models.StockTransaction
+        exclude = []

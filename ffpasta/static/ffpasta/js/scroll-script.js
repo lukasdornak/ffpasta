@@ -55,7 +55,7 @@ function hashCheck(){
 
 function getItem(item){
     $.ajax({
-        url: item,
+        url: 'ajax/' + item + '/',
         cache: true
     }).done(function( response ) {
         ogOverride = JSON.parse(response);

@@ -99,7 +99,7 @@ $(function(){
     });
     $('#add_item').click(function(){
         var n = $('#items_formset .new_order_row').length;
-        if($('#id_form-0-item option').length > n){
+        if($('#id_form-0-product option').length > n){
             addItem(n);
             refreshOptions();
         }

@@ -44,8 +44,8 @@ class ItemsWidget(Widget):
 
     def get_context_data(self):
         context_data = {
-            'short_pasta_list': models.Pasta.objects.filter(length=0, published=True),
-            'long_pasta_list': models.Pasta.objects.filter(length=1, published=True),
+            'short_pasta_list': models.Pasta.objects.filter(length=models.Pasta.SHORT, published=True),
+            'long_pasta_list': models.Pasta.objects.filter(length=models.Pasta.LONG, published=True),
             'sauce_list': models.Sauce.objects.filter(published=True)
         }
         return context_data

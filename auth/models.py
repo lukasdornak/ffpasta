@@ -151,6 +151,7 @@ class UserManager(BaseUserManager):
     # def create_user(self, username, email=None, password=None, **extra_fields):
     def create_user(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', False)
+        extra_fields.setdefault('is_worker', False)
         extra_fields.setdefault('is_superuser', False)
         # return self._create_user(username, email, password, **extra_fields)
         return self._create_user(email, password, **extra_fields)
@@ -158,6 +159,7 @@ class UserManager(BaseUserManager):
     # def create_superuser(self, username, email, password, **extra_fields):
     def create_superuser(self, email, password, **extra_fields):
         extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_worker', True)
         extra_fields.setdefault('is_superuser', True)
 
         if extra_fields.get('is_staff') is not True:
@@ -321,6 +323,11 @@ class AbstractUser(AbstractBaseUser, PermissionsMixin):
         default=False,
         help_text=_('Designates whether the user can log into this admin site.'),
     )
+    is_worker = models.BooleanField(
+        'pracovník',
+        default=False,
+        help_text='',
+    )
     is_active = models.BooleanField(
         _('active'),
         default=True,
@@ -366,8 +373,11 @@ class AbstractUser(AbstractBaseUser, PermissionsMixin):
         send_mail(subject, message, from_email, [self.email], **kwargs)
 
     def send_password_reset_token(self, token):
-        message = f'Dobrý den,\n\npro nastavení nového hesla do obednávkového systému na ffpasta.cz, klikněto, prosím, na níže uvedený odkaz.\nPokud jste si obnovu hesla nevyžál(a), ignorujte, prosím, tento e-mail a na odkaz neklikejte.\n\nhttps://www.ffpasta.cz/zmena-hesla/{ self.id }/{ token }/\n\nS přáním pěkného dne\nVáš tým FFpasta.cz'
-        self.email_user(subject='Obnova hesla', message=message, from_email='info@ffpasta.cz')
+        message = f'Dobrý den,\n\n' \
+                  f'pro nastavení nového hesla do obednávkového systému na ffpasta.cz, klikněto, prosím, na níže uvedený odkaz.\n' \
+                  f'Pokud jste si obnovu hesla nevyžál(a), ignorujte, prosím, tento e-mail a na odkaz neklikejte.\n\n' \
+                  f'https://www.ffpasta.cz/zmena-hesla/{ self.id }/{ token }/\n\nS přáním pěkného dne\nVáš tým FFpasta.cz'
+        self.email_user(subject='Obnova hesla', message=message, from_email='admin@ffpasta.cz')
         return True
 
 

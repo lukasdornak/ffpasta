@@ -5,8 +5,8 @@
 {% block header_left %}<a href="/nova-objednavka/" id="new_order_link" class="bordered">NOVÁ OBJEDNÁVKA</a>{% endblock %}
 
 {% block content %}
-    <h1 class="bordered">Přehled objednávek</h1>{% if object_list %}{% if messages %}{% for message in messages %}
-        <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>{% endfor %}{% endif %}
+    <h1 class="bordered">Přehled objednávek</h1>{% if messages %}{% for message in messages %}
+    <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>{% endfor %}{% endif %}{% if object_list %}
     <table class="overview">
         <thead>
             <tr>

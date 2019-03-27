@@ -8,12 +8,12 @@ from ffpasta import models
 
 
 
-prices = [{
+price_categories = [{
     'name': 'těstoviny',
-    'default_price': 150,
+    'unit_price': 100,
 }, {
-    'name': 'pesta a hořčice',
-    'default_price': 150,
+    'name': 'pesta',
+    'unit_price': 100,
 }]
 
 pastas = [{
@@ -132,22 +132,21 @@ sections = [{
 
 
 if not models.PriceCategory.objects.all().exists():
-    for p in prices:
+    for p in price_categories:
         print(p['name'])
-        models.PriceCategory(name=p['name'], default_price=p['default_price']).save()
+        models.PriceCategory(name=p['name'], unit_price=p['unit_price']).save()
 
 if not models.Pasta.objects.all().exists():
-    price = models.PriceCategory.objects.first()
+    price_category = models.PriceCategory.objects.first()
     for p in pastas:
         print(p['name'])
-        models.Pasta(name=p['name'], description=p['description'], img=p['img'], length=p['length'], pricecategory=price,
+        models.Pasta(name=p['name'], description=p['description'], img=p['img'], length=p['length'], price_category=price_category,
                        published=True, active=True).save()
 
 if not models.Difference.objects.all().exists():
     for r in reasons:
         print(r['header'])
-        models.Difference(header=r['header'], ffpasta=r['ffpasta'], others=r['others'], img=r['img'],
-                       published=True).save()
+        models.Difference(header=r['header'], ffpasta=r['ffpasta'], others=r['others'], img=r['img'], published=True).save()
 
 if not models.Section.objects.all().exists():
     for s in sections:
