@@ -175,7 +175,7 @@ class ForgottenPasswordView(FormView):
         user = User.objects.filter(email__exact=form.cleaned_data['email']).first()
         if user:
             token = get_random_string(length=32)
-            cache.set(f'PASSWORD_RESET_TOKEN_FOR_CUSTOMER_{ user.id }', token)
+            cache.set(f'PASSWORD_RESET_TOKEN_FOR_CUSTOMER_{ user.id }', token, 600)
             if user.send_password_reset_token(token):
                 messages.add_message(self.request, messages.INFO, 'Na zadanou e-mailovou adresu, jsme Vám zaslali odkaz pro obnovu hesla.')
             else:
