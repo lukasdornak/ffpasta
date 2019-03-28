@@ -568,7 +568,9 @@ table.overview {
       left: -15%; }
     .circs .circ#c2 {
       left: 75%;
-      bottom: -20%; } }
+      bottom: -20%; }
+  .pull_down {
+    margin-bottom: -5vw; } }
 
 /* Large devices */
 @media (min-width: 992px) {

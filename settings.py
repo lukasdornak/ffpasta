@@ -8,7 +8,7 @@ DEBUG = True
 
 DOMAIN = os.environ.get('DOMAIN', 'localhost')
 
-ALLOWED_HOSTS = [DOMAIN, ]
+ALLOWED_HOSTS = [DOMAIN, 'www.' + DOMAIN]
 
 INSTALLED_APPS = [
     'ffpasta',
