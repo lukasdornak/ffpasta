@@ -59,7 +59,7 @@ function getItem(item){
         cache: true
     }).done(function( response ) {
         ogOverride = JSON.parse(response);
-        $( "#modal" ).html( ogOverride['body'] );
+        $("#modal").html( ogOverride['body'] ).addClass('shown');
     });
 }
 
@@ -91,35 +91,24 @@ function pageCheck(){
 
 function showItem(){
     readyToScroll = false;
-    if ( $(document).scrollTop() < ($pages.eq(1).offset().top - head) ) {
+    if ( $(document).scrollTop() < $pages.eq(1).offset().top ) {
         window.scrollTo(0, $pages.eq(1).offset().top - head + 5);
-    } else if ($(document).scrollTop() > ($pages.eq(2).offset().top - head - $( window ).height())){
-        window.scrollTo(0, $pages.eq(2).offset().top - head - $( window ).height()) ;
     }
     documentScrollTop = $(document).scrollTop();
-    $('#header').removeClass('full');
     $('#menu_button').removeClass('cross');
     $('nav').addClass('hidden');
-    $('body').addClass('stop');
-    if (window.innerWidth <= 767) {
-        $('body').css('top', (-documentScrollTop + $('#id-uvod').height()) + 'px');
-        $('section, .blackboard').css('display', 'none');
-        $('#modal').addClass('shown');
-    } else {
-        $('body').css('top', -documentScrollTop + 'px');
-        $('#modal').addClass('shown');
-
-    };
-    $('body').addClass('stop');
-    window.scrollTo(0, documentScrollTop);
+    $('body').addClass('stop').css('top', -documentScrollTop + 'px');
+    $('#modal').removeClass('hidden');
 }
 
 function hideItem(){
-    $('#modal').removeClass('shown');
     $('body').removeClass('stop');
-    $('section').css('display', 'block');
-    $('.blackboard').css('display', 'flex');
-    readyToScroll = true;
+    window.scrollTo(0, documentScrollTop);
+    $('#modal').removeClass('shown');
+    setTimeout(function () {
+        $('#modal').addClass('hidden');
+        readyToScroll = true;
+    }, 500)
 }
 
 function shareOverrideOGMeta(){

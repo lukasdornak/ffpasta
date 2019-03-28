@@ -299,8 +299,8 @@ h3.item_name {
     text-align: left; }
 
 #modal {
+  display: block;
   color: white;
-  display: none;
   z-index: 20;
   width: 100%;
   height: 100vh;
@@ -309,9 +309,18 @@ h3.item_name {
   top: 0;
   left: 0;
   overflow-y: scroll;
-  background-color: rgba(0, 0, 0, 0.5); }
+  -webkit-transition: background-color 500ms;
+  -moz-transition: background-color 500ms;
+  -ms-transition: background-color 500ms;
+  -o-transition: background-color 500ms;
+  transition: background-color 500ms;
+  background-color: transparent; }
+  #modal.hidden {
+    display: none; }
   #modal.shown {
-    display: block; }
+    background-color: rgba(0, 0, 0, 0.5); }
+    #modal.shown > div {
+      opacity: 1; }
   #modal > div {
     position: relative;
     width: 100%;
@@ -321,7 +330,13 @@ h3.item_name {
     background-repeat: repeat;
     box-shadow: 0 10px 30px 20px #111;
     margin: 0 auto;
-    padding-top: 80px; }
+    padding-top: 80px;
+    -webkit-transition: opacity 500ms;
+    -moz-transition: opacity 500ms;
+    -ms-transition: opacity 500ms;
+    -o-transition: opacity 500ms;
+    transition: opacity 500ms;
+    opacity: 0; }
   #modal #item_detail {
     display: flex;
     flex-direction: column;
