@@ -66,7 +66,7 @@ class ContactForm(forms.Form):
             subject='Dotaz',
             message=message,
             from_email='admin@ffpasta.cz',
-            recipient_list=['lukasdornak@gmail.com', ],
+            recipient_list=['info@ffpasta.cz', ],
         )
 
 
@@ -154,3 +154,14 @@ class StockTransactionForm(forms.ModelForm):
     class Meta:
         model = models.StockTransaction
         exclude = []
+
+class PriceAdminForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.fields.get('product'):
+            self.fields['product'].choices = [(None, '---------')]
+            self.fields['product'].choices += [(product.id, product.name) for product in models.Product.objects.filter(price_category__isnull=True)]
+
+    class Meta:
+        model = models.Item
+        exclude = ('customer',)

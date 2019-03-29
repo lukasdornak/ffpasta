@@ -93,6 +93,7 @@ class DeliveryAdmin(admin.ModelAdmin):
 
 class PriceInline(admin.TabularInline):
     model = models.Price
+    form = forms.PriceAdminForm
     extra = 0
 
 
