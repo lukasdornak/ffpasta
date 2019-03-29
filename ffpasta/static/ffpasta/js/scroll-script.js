@@ -83,7 +83,6 @@ function scrollToPage(){
 }
 
 function pageCheck(){
-    console.log('pageCheck');
     var scrolled = getScrolledPage();
     if(page!=scrolled){
         page = scrolled;
