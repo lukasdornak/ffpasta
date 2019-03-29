@@ -69,8 +69,9 @@ class StockTransaction(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         readonly_fields = super().get_readonly_fields(request, obj)
         if obj is not None:
-            readonly_fields += ('product', 'transaction_type', 'quantity')
+            readonly_fields += ('product', 'transaction_type', 'order', 'quantity')
         return readonly_fields
+
 
 @admin.register(models.Pasta)
 class PastaAdmin(ProductMixin, PublishMixin, admin.ModelAdmin):
@@ -373,9 +374,6 @@ class UncommittedOrderAdmin(admin.ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
         return False
 
 

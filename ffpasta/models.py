@@ -112,7 +112,7 @@ class StockTransaction(models.Model):
     transaction_type = models.CharField('druh pohybu', max_length=1, choices=TYPE_CHOICES)
     committed_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='uživatel', on_delete=models.PROTECT)
     note = models.CharField('poznámka', max_length=150, null=True, blank=True)
-    order = models.ForeignKey('Order',verbose_name='objednávka', on_delete=models.SET_NULL, null=True, blank=True)
+    order = models.ForeignKey('Order', verbose_name='objednávka', on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         verbose_name = 'pohyb skladu'
@@ -130,7 +130,7 @@ class StockTransaction(models.Model):
     def clean(self):
         super().clean()
         if self.transaction_type == 'c' and self.order is None:
-            raise ValidationError('Je třeba zadat objednávku, která má být ')
+            raise ValidationError('Je třeba zadat objednávku, která má být kompletována')
 
     def _process(self):
         self.product.in_stock += self.quantity if self.transaction_type == 'p' else - self.quantity
@@ -363,7 +363,7 @@ class Order(models.Model):
 
 
 class Item(models.Model):
-    order = models.ForeignKey('Order', on_delete=models.PROTECT)
+    order = models.ForeignKey('Order', on_delete=models.CASCADE)
     product = models.ForeignKey('Product', on_delete=models.PROTECT, verbose_name='produkt')
     quantity = models.SmallIntegerField('množství')
     name = models.CharField('produkt', max_length=30, editable=False)
