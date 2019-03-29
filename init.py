@@ -4,6 +4,8 @@ import os, django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
 django.setup()
 
+from django.contrib.auth.models import Group
+
 from ffpasta import models
 
 
@@ -61,6 +63,25 @@ pastas = [{
     'length': 1,
     'img': 'tagliatelle.png',
     'description': 'Tagliatelle jsou dlouhé ploché široké nudle, šířka těchto těstovin je 0,65 - 1 cm. Těstovina je nejčastěji podávaná s různými druhy ragů.',
+}]
+
+
+sauces = [{
+    'name': 'pesto',
+    'sauce_type': models.Sauce.PESTO,
+    'img': 'pesto.png',
+    'description': '',
+    'price_category_id': 2,
+    'unit_price': None,
+    'active': False,
+}, {
+    'name': 'hořčice',
+    'sauce_type': models.Sauce.MUSTARD,
+    'img': 'horcice.png',
+    'description': '',
+    'price_category_id': None,
+    'unit_price': 100,
+    'active': True,
 }]
 
 reasons = [{
@@ -143,6 +164,12 @@ if not models.Pasta.objects.all().exists():
         models.Pasta(name=p['name'], description=p['description'], img=p['img'], length=p['length'], price_category=price_category,
                        published=True, active=True).save()
 
+if not models.Sauce.objects.all().exists():
+    for s in sauces:
+        print(s['name'])
+        models.Sauce(name=s['name'], description=s['description'], img=s['img'], sauce_type=s['sauce_type'],
+                     price_category_id=s['price_category_id'], unit_price=s['unit_price'], published=True, active=s['active']).save()
+
 if not models.Difference.objects.all().exists():
     for r in reasons:
         print(r['header'])
@@ -152,3 +179,6 @@ if not models.Section.objects.all().exists():
     for s in sections:
         print(s['headline'])
         models.Section(headline=s['headline'], link=s['link'], text=s['text'], widget=s['widget']).save()
+
+if not Group.objects.all().exists():
+    Group.objects.create(name='Pracovník')

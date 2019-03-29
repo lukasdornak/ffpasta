@@ -167,7 +167,7 @@ class Sauce(Product):
     class Meta:
         verbose_name = 'hořčice/pesto'
         verbose_name_plural = 'hořčice a pesta'
-        ordering = ['name']
+        ordering = ['-sauce_type', 'name']
 
     def __str__(self):
         return self.name
