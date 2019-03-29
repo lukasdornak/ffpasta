@@ -13,7 +13,7 @@ from . import idoklad, widgets
 
 
 class PriceCategory(models.Model):
-    name = models.CharField('název', max_length=20)
+    name = models.CharField('název', max_length=20, unique=True)
     unit_price = models.DecimalField('jednotková cena', max_digits=6, decimal_places=2)
 
     class Meta:
@@ -174,7 +174,7 @@ class Sauce(Product):
 
 
 class Delivery(models.Model):
-    name = models.CharField('název', max_length=50)
+    name = models.CharField('název', max_length=50, unique=True)
     description = models.TextField('popis', null=True, blank=True)
     monday = models.BooleanField('pondělí', default=False)
     tuesday = models.BooleanField('úterý', default=False)
@@ -203,12 +203,13 @@ class Delivery(models.Model):
 class Price(models.Model):
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, verbose_name='zákazník')
     price_category = models.ForeignKey('PriceCategory', on_delete=models.CASCADE, verbose_name='cenová kategorie', null=True, blank=True)
-    product = models.ForeignKey('Product', on_delete=models.CASCADE, verbose_name='cenová kategorie', null=True, blank=True)
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, verbose_name='produkt', null=True, blank=True)
     unit_price = models.DecimalField('jednotková cena', max_digits=6, decimal_places=2, blank=True)
 
     class Meta:
         verbose_name = 'cena'
         verbose_name_plural = 'ceny'
+        unique_together = (('customer', 'price_category'), ('customer', 'product'))
 
     def __str__(self):
         return '{} {}'.format(self.price_category, self.unit_price)
@@ -226,7 +227,6 @@ class Customer(models.Model):
     id_idoklad = models.PositiveSmallIntegerField('id iDoklad', null=True, editable=False)
     ico = models.DecimalField('ičo', max_digits=8, decimal_places=0, null=True, blank=True)
     delivery = models.ForeignKey('Delivery', on_delete=models.PROTECT, verbose_name='Závoz')
-    price_list = models.ManyToManyField('PriceCategory', through='Price')
 
     class Meta:
         verbose_name = 'zákazník'
@@ -393,7 +393,7 @@ class Item(models.Model):
 
 class Section(models.Model):
     headline = models.CharField('nadpis', max_length=50)
-    link = models.CharField('odkaz v menu', max_length=25)
+    link = models.CharField('odkaz v menu', max_length=25, unique=True)
     text = RichTextField('obsah', blank=True, null=True, default=None)
     slug = models.SlugField(editable=False, unique=True)
     widget = models.CharField(max_length=1, choices=widgets.Widget.get_choices(),
