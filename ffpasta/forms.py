@@ -148,7 +148,8 @@ class ChangePasswordForm(forms.Form):
 class StockTransactionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['transaction_type'].choices = [models.StockTransaction.TYPE_CHOICES[0], models.StockTransaction.TYPE_CHOICES[2]]
+        if self.fields.get('transaction_type'):
+            self.fields['transaction_type'].choices = [models.StockTransaction.TYPE_CHOICES[0], models.StockTransaction.TYPE_CHOICES[2]]
 
     class Meta:
         model = models.StockTransaction
