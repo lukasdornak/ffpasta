@@ -14,7 +14,8 @@ function nextCheck(){
 
 function hashCheck(){
     hashChanged = false;
-    if ( $items.index($( window.location.hash.replace('#','#id-') )) !== -1 ) {
+    var $element = $( window.location.hash.replace('#','#id-') );
+    if ( $items.index($element) !== -1 ) {
         var newItem = window.location.hash.replace('#', '');
         getItem(newItem);
         if( !item ) {
@@ -26,7 +27,7 @@ function hashCheck(){
         page = -1;
 
     } else {
-        var newPage = $pages.index($( window.location.hash.replace('#','#id-') ));
+        var newPage = $pages.index($element);
         if(newPage === -1){
             window.location.hash = $pages.eq(0).attr('id').replace('id-', '');
             return 0;
@@ -82,6 +83,7 @@ function scrollToPage(){
 }
 
 function pageCheck(){
+    console.log('pageCheck');
     var scrolled = getScrolledPage();
     if(page!=scrolled){
         page = scrolled;

@@ -292,10 +292,10 @@ h3.item_name {
     .circs .circ#c2 {
       left: 50%; }
 
-#kontakt {
+#contact {
   display: flex;
   justify-content: space-evenly; }
-  #kontakt p {
+  #contact p {
     text-align: left; }
 
 #modal {
