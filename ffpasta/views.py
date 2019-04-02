@@ -103,6 +103,8 @@ class OrderCreateUpdateView(LoginRequiredMixin, CustomerRequiredMixin, UpdateVie
         return super().get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        if 'back_to_overview' in request.POST:
+            return HttpResponseRedirect('/objednavky/')
         self.formset = self.formset_class(data = self.request.POST)
         self.initial = {'customer': self.request.user.customer.pk}
         self.object = self.get_object()
@@ -157,6 +159,8 @@ class OrderFinishView(LoginRequiredMixin, CustomerRequiredMixin, UpdateView):
         return form
 
     def post(self, request, *args, **kwargs):
+        if 'back_to_edit_order' in request.POST:
+            return HttpResponseRedirect('/nova-objednavka/')
         self.initial = {'datetime_ordered': datetime.now()}
         return super().post(request, *args, **kwargs)
 

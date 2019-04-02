@@ -9,7 +9,7 @@
 
 {% block title %}{{ block.super }} | Nová objednávka{% endblock %}
 
-{% block header_left %}<a href="/objednavky/" class="bordered" style="line-height: 3em">zpět na přehled</a>{% endblock %}
+{% block header_left %}{% endblock %}
 
 {% block content %}
     <h1 class="bordered">Nová objednávka</h1>
@@ -36,8 +36,7 @@
             <div id="add_item" class="bordered">+</div>
             <div id="remove_item" class="bordered">−</div>
         </div>
-        <div><input type="submit" value="Pokračovat k objednání"></div>
-
+        <div style="margin: 1em auto"><input type="submit" name="back_to_overview" value="Zpět na přehled"><input type="submit" value="Pokračovat k objednání"></div>
     </form>
     <script>
 var dates = {{ view.dates|safe }};

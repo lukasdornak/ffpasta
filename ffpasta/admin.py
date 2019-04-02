@@ -230,7 +230,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_filter = (('date_required', FutureDateFieldFilter), 'status')
     readonly_fields = ['datetime_ordered', 'invoiced']
     list_editable = ['my_note']
-    change_form_template = 'ffpasta/order_change_form.html'
+    change_form_template = 'ffpasta/admin/order_change_form.html'
     inlines = [ItemInline]
     actions = ['reject', 'confirm', 'complete']
 

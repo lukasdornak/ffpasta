@@ -3,7 +3,7 @@
 
 {% block title %}{{ block.super }} | Potvrzení objednávky{% endblock %}
 
-{% block header_left %}<a href="/nova-objednavka/" class="bordered" style="line-height: 3em">upravit objednávku</a>{% endblock %}
+{% block header_left %}{% endblock %}
 
 {% block content %}
     <h1 class="bordered">Potvrzení objednávky</h1>
@@ -30,7 +30,7 @@
                     </svg>
                 </td>
             </tr>{% for item in object.item_set.all %}
-            <tr class="{% if order.is_history %}history{% elif order.status >= 2 %}confirmed{% endif %}{% if not order.status %} rejected{% endif %}">
+            <tr>
                 <td>{{ item.product }}</td>
                 <td style="text-align: right">{{ item.quantity }} {{ item.product.get_unit }}</td>
                 <td style="text-align: right">{{ item.unit_price }} Kč</td>
@@ -51,6 +51,6 @@
     </table>
     <form method="post" autocomplete="off">
         {% csrf_token %}
-        <div><input type="submit" value="Potvrdit a objednat"></div>
+        <div style="margin: 1em auto"><input type="submit" name="back_to_edit_order" value="Upravit objednávku"><input type="submit" value="Potvrdit a objednat"></div>
     </form>
 {% endblock %}
