@@ -1,11 +1,12 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path
 
+from .admin import production_admin
 from . import views
 
-admin.site.site_header = 'ffpasta'
+admin.site.site_header = 'FFpasta'
 
 urlpatterns = [
     path('', views.Home.as_view()),
@@ -20,6 +21,7 @@ urlpatterns = [
     path('nova-objednavka/', views.OrderCreateUpdateView.as_view()),
     path('dokonceni-objednavky/', views.OrderFinishView.as_view()),
     path('admin/', admin.site.urls),
+    path('produkce/', production_admin.urls),
     path('ajax/<slug:slug>/', views.ProductDetailView.as_view()),
 ]
 if settings.DEBUG:

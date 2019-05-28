@@ -9,9 +9,11 @@ from django.http import HttpResponseRedirect, Http404
 from django.shortcuts import render
 from django.utils.html import mark_safe
 from django.utils.crypto import get_random_string
-from django.views.generic import FormView, ListView, DetailView, UpdateView, TemplateView
-from datetime import datetime
+from django.views.generic import FormView, ListView, DetailView, UpdateView, CreateView
+from datetime import datetime, date, timedelta
 from . import forms, models
+
+from django.db.models import OuterRef, Subquery, Sum, Q
 
 
 class Home(ListView):
@@ -48,13 +50,14 @@ class LoginView(LoginView):
         logout(request)
         return super().get(request, *args, **kwargs)
 
-    def post(self, request, *args, **kwargs):
-        password = request.POST.get('password')
+    def get_success_url(self):
+        password = self.request.POST.get('password')
         if len(password) < 8:
-            super().post(request, *args, **kwargs)
-            messages.add_message(self.request, messages.INFO, 'Vítejte v objednávkovém systému FFpasta. Než začnete objednávat, nastavte si, prosím, nové heslo. Děkujeme, za pochopení')
-            return HttpResponseRedirect('/zmena-hesla/')
-        return super().post(request, *args, **kwargs)
+            messages.add_message(self.request, messages.INFO,
+                                 'Vítejte v objednávkovém systému FFpasta. Než začnete objednávat, '
+                                 'nastavte si, prosím, nové heslo. Děkujeme, za pochopení')
+            return '/zmena-hesla/'
+        return super().get_success_url()
 
 
 class ProductDetailView(DetailView):
@@ -75,6 +78,7 @@ class CustomerRequiredMixin:
         if hasattr(request.user, 'customer'):
             return super().dispatch(request, *args, **kwargs)
         elif request.user.is_staff:
+            messages.add_message(request, messages.ERROR, "Pro objednávání se přihlaš jako zákazník.")
             return HttpResponseRedirect('/admin/ffpasta/order/')
         raise Http404("Zákazník nenalezen")
 
@@ -188,6 +192,7 @@ class ForgottenPasswordView(FormView):
         else:
             messages.add_message(self.request, messages.ERROR, 'Zatím nemáme žádného zákazníka s tímto emailem. Chcete-li se jím stát, napište nám!')
             return self.render_to_response(self.get_context_data(form=form))
+
 
 class ChangePasswordView(FormView):
     form_class = forms.ChangePasswordForm

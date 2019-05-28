@@ -151,6 +151,7 @@ class UserManager(BaseUserManager):
     # def create_user(self, username, email=None, password=None, **extra_fields):
     def create_user(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', False)
+        extra_fields.setdefault('is_worker', False)
         extra_fields.setdefault('is_superuser', False)
         # return self._create_user(username, email, password, **extra_fields)
         return self._create_user(email, password, **extra_fields)
@@ -158,10 +159,13 @@ class UserManager(BaseUserManager):
     # def create_superuser(self, username, email, password, **extra_fields):
     def create_superuser(self, email, password, **extra_fields):
         extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_worker', True)
         extra_fields.setdefault('is_superuser', True)
 
         if extra_fields.get('is_staff') is not True:
             raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_worker') is not True:
+            raise ValueError('Superuser must have is_worker=True.')
         if extra_fields.get('is_superuser') is not True:
             raise ValueError('Superuser must have is_superuser=True.')
 
@@ -321,6 +325,11 @@ class AbstractUser(AbstractBaseUser, PermissionsMixin):
         default=False,
         help_text=_('Designates whether the user can log into this admin site.'),
     )
+    is_worker = models.BooleanField(
+        'pracovník',
+        default=False,
+        help_text='Určuje, zda se uživatel může přihlásit do výroby.',
+    )
     is_active = models.BooleanField(
         _('active'),
         default=True,
@@ -390,6 +399,7 @@ class AnonymousUser:
     pk = None
     username = ''
     is_staff = False
+    is_worker = False
     is_active = False
     is_superuser = False
     _groups = EmptyManager(Group)

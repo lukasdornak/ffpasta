@@ -95,7 +95,8 @@ CKEDITOR_CONFIGS = {
     'default': {
         'toolbar': 'Custom',
         'toolbar_Custom': [
-            ['Styles', 'Format', 'FontSize', 'Bold', 'Italic', 'Underline', 'Strike', 'RemoveFormat', 'PasteText', 'Redo', 'Undo', 'Link', 'Unlink', 'Anchor'],
+            ['Styles', 'Format', 'FontSize', 'Bold', 'Italic', 'Underline', 'Strike',
+             'RemoveFormat', 'PasteText','Redo', 'Undo', 'Link', 'Unlink', 'Anchor'],
             ['NumberedList', 'BulletedList', 'Outdent', 'Indent', 'Blockquote'],
             ['JustifyLeft', 'JustifyCenter', 'JustifyRight'],
             ['Image', 'Flash', 'Table', 'HorizontalRule', 'Smiley', 'SpecialChar'],

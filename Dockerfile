@@ -1,6 +1,7 @@
 FROM lukasdornak/djuwinx:1.0
 
 COPY . /app/
+COPY admin/forms.py /usr/local/lib/python3.7/site-packages/django/contrib/admin/forms.py
 COPY auth/admin.py /usr/local/lib/python3.7/site-packages/django/contrib/auth/admin.py
 COPY auth/forms.py /usr/local/lib/python3.7/site-packages/django/contrib/auth/forms.py
 COPY auth/models.py /usr/local/lib/python3.7/site-packages/django/contrib/auth/models.py

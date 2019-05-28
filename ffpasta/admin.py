@@ -1,11 +1,27 @@
 import datetime
 
+from django.contrib.admin import AdminSite
 from django.contrib import admin, messages
+from django.db.models import Sum
 from django.http import HttpResponseRedirect
 from django.forms import ValidationError
+from django.shortcuts import redirect
 from django.utils.translation import gettext_lazy as _
+from django.utils.safestring import mark_safe
 
 from . import forms, models, idoklad
+
+
+class ProductionAdminSite(AdminSite):
+    site_header = "FFpasta - výroba"
+    site_title = "Vyroba"
+    index_title = "Vyroba"
+
+    def has_permission(self, request):
+        return request.user.is_active and request.user.is_worker
+
+
+production_admin = ProductionAdminSite(name='production_admin')
 
 
 def make_assign_to_price_category(price_category):
@@ -58,19 +74,6 @@ class ProductMixin:
 @admin.register(models.PriceCategory)
 class PriceCategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'unit_price']
-
-
-@admin.register(models.StockTransaction)
-class StockTransaction(admin.ModelAdmin):
-    list_display = ['id', 'datetime', 'committed_by', 'transaction_type', 'product', 'quantity']
-    list_filter = ['datetime', 'transaction_type', 'committed_by']
-    form = forms.StockTransactionForm
-
-    def get_readonly_fields(self, request, obj=None):
-        readonly_fields = super().get_readonly_fields(request, obj)
-        if obj is not None:
-            readonly_fields += ('product', 'transaction_type', 'order', 'quantity')
-        return readonly_fields
 
 
 @admin.register(models.Pasta)
@@ -325,7 +328,7 @@ class OrderAdmin(admin.ModelAdmin):
 class TodayDeliveryOrder(models.Order):
     class Meta:
         proxy = True
-        verbose_name = 'objednávka'
+        verbose_name = 'zásilka'
         verbose_name_plural = 'dnešní rozvoz'
 
     def customer_address(self):
@@ -358,6 +361,15 @@ class TodayDeliveryOrderAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class ProductionTodayDeliveryOrderAdmin(TodayDeliveryOrderAdmin):
+
+    def has_view_permission(self, request, obj=None):
+        return True
+
+    def has_module_permission(self, request):
+        return True
 
 
 @admin.register(UncommittedOrder)
@@ -396,3 +408,250 @@ class RecipeAdmin(PublishMixin, admin.ModelAdmin):
 @admin.register(models.Difference)
 class DifferenceAdmin(PublishMixin, admin.ModelAdmin):
     list_display = ['__str__', 'ffpasta', 'others', 'published']
+
+
+class OrderedProduct(models.Product):
+    class Meta:
+        proxy = True
+        verbose_name = 'Objednaný produkt'
+        verbose_name_plural = 'Objednané produkty'
+
+
+class ProductionFutureDateFieldFilter(admin.FieldListFilter):
+    def __init__(self, field, request, params, model, model_admin, field_path):
+        self.field_generic = '%s__' % field_path
+        self.date_params = {k: v for k, v in params.items() if k.startswith(self.field_generic)}
+
+        today = datetime.date.today()
+
+        self.lookup_kwarg_since = '%s__gte' % field_path
+        self.lookup_kwarg_until = '%s__lt' % field_path
+        self.links = (
+            ('Dnes', {
+                self.lookup_kwarg_since: str(today),
+                self.lookup_kwarg_until: str(today + datetime.timedelta(days=1)),
+            }),
+            ('zítra', {
+                self.lookup_kwarg_since: str(today + datetime.timedelta(days=1)),
+                self.lookup_kwarg_until: str(today + datetime.timedelta(days=2)),
+            }),
+            ('pozítří', {
+                self.lookup_kwarg_since: str(today + datetime.timedelta(days=2)),
+                self.lookup_kwarg_until: str(today + datetime.timedelta(days=3)),
+            }),
+            ('popozítří', {
+                self.lookup_kwarg_since: str(today + datetime.timedelta(days=3)),
+                self.lookup_kwarg_until: str(today + datetime.timedelta(days=4)),
+            }),
+        )
+        if field.null:
+            self.lookup_kwarg_isnull = '%s__isnull' % field_path
+            self.links += (
+                (_('No date'), {self.field_generic + 'isnull': 'True'}),
+                (_('Has date'), {self.field_generic + 'isnull': 'False'}),
+            )
+        super().__init__(field, request, params, model, model_admin, field_path)
+
+    def expected_parameters(self):
+        params = [self.lookup_kwarg_since, self.lookup_kwarg_until]
+        if self.field.null:
+            params.append(self.lookup_kwarg_isnull)
+        return params
+
+    def choices(self, changelist):
+        for title, param_dict in self.links:
+            yield {
+                'selected': self.date_params == param_dict,
+                'query_string': changelist.get_query_string(param_dict, [self.field_generic]),
+                'display': title,
+            }
+
+
+@admin.register(OrderedProduct)
+class OrderedProductAdmin(admin.ModelAdmin):
+    list_display = ['production_link', 'next_1st_day_to_do', 'next_2nd_day_to_do', 'next_3rd_day_to_do', 'in_stock']
+    ordering = ['-sauce', 'name',]
+    list_display_links = None
+    list_select_related = True
+
+    def next_1st_day_to_do(self, obj):
+        return models.Item.objects.filter(
+            product=obj,
+            order__status__exact=models.Order.CONFIRMED,
+            order__date_required__exact=datetime.date.today() + datetime.timedelta(days=1),
+        ).aggregate(Sum('quantity'))['quantity__sum']
+
+    def next_2nd_day_to_do(self, obj):
+        return models.Item.objects.filter(
+            product=obj,
+            order__status__exact=models.Order.CONFIRMED,
+            order__date_required__exact=datetime.date.today() + datetime.timedelta(days=2),
+        ).aggregate(Sum('quantity'))['quantity__sum']
+
+    def next_3rd_day_to_do(self, obj):
+        return models.Item.objects.filter(
+            product=obj,
+            order__status__exact=models.Order.CONFIRMED,
+            order__date_required__exact=datetime.date.today() + datetime.timedelta(days=3),
+        ).aggregate(Sum('quantity'))['quantity__sum']
+
+    def production_link(self, obj):
+        return mark_safe(f'<a href="/admin/ffpasta/stocktransaction/add/?product={ obj.id }&quantity=25&transaction_type={ models.StockTransaction.PRODUCTION }"><b>{ obj.name }</b></a>')
+
+    production_link.short_description = 'produkt'
+    next_1st_day_to_do.short_description = (datetime.date.today() + datetime.timedelta(days=1)).strftime('%A, %-d. %-m.')
+    next_2nd_day_to_do.short_description = (datetime.date.today() + datetime.timedelta(days=2)).strftime('%A, %-d. %-m.')
+    next_3rd_day_to_do.short_description = (datetime.date.today() + datetime.timedelta(days=3)).strftime('%A, %-d. %-m.')
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['title'] = 'Vyberte produkt k výrobě'
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request):
+        return False
+
+
+class ProductionOrderedProductAdmin(OrderedProductAdmin):
+
+    def production_link(self, obj):
+        return mark_safe(f'<a href="/produkce/ffpasta/stocktransaction/add/?product={ obj.id }&quantity=25&transaction_type={ models.StockTransaction.PRODUCTION }"><b>{ obj.name }</b></a>')
+
+    def has_module_permission(self, request):
+        return True
+
+    def has_view_permission(self, request, obj=None):
+        return True
+
+
+@admin.register(models.StockTransaction)
+class StockTransactionAdmin(admin.ModelAdmin):
+    list_display = ['id', 'datetime', 'committed_by', 'transaction_type', 'product', 'quantity']
+    list_filter = ['datetime', 'transaction_type', 'committed_by']
+    form = forms.StockTransactionForm
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly_fields = super().get_readonly_fields(request, obj)
+        if obj is not None:
+            readonly_fields += ('product', 'transaction_type', 'quantity')
+        return readonly_fields
+
+    def save_model(self, request, obj, form, change):
+        if obj.id is None:
+            obj.committed_by = request.user
+        obj.save()
+
+
+class ProductionStockTransactionAdmin(StockTransactionAdmin):
+
+    def response_add(self, request, obj, post_url_continue=None):
+        return redirect('/produkce/ffpasta/orderedproduct/')
+
+    def has_add_permission(self, request):
+        return True
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return True
+
+    def has_view_permission(self, request, obj=None):
+        return True
+
+    def has_module_permission(self, request):
+        return True
+
+
+class ToDoOrder(models.Order):
+    class Meta:
+        proxy = True
+        verbose_name = 'potvrzená objednávka'
+        verbose_name_plural = 'potvrzené objednávky'
+
+
+class ToDoOrderAdmin(admin.ModelAdmin):
+    date_hierarchy = 'date_required'
+    list_display = ['__str__', 'customer_note', 'customer', 'short_date', 'my_note', 'is_complete']
+    list_filter = [('date_required', ProductionFutureDateFieldFilter)]
+    readonly_fields = ['datetime_ordered', 'invoiced']
+    list_editable = ['my_note']
+    change_form_template = 'ffpasta/admin/order_change_form.html'
+    actions = ['complete']
+
+    def short_date(self, obj):
+        return obj.date_required.strftime("%d %m.")
+
+    def is_complete(self, obj):
+        return obj.status == obj.COMPLETED
+
+    short_date.admin_order_field = 'date_required'
+    short_date.short_description = 'Datum dodání'
+    is_complete.admin_order_field = 'status'
+    is_complete.short_description = 'Hotovo'
+    is_complete.boolean = True
+
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.filter(status__in=[models.Order.CONFIRMED, models.Order.COMPLETED],
+                               date_required__gte=datetime.date.today(),
+                               date_required__lte=(datetime.date.today() + datetime.timedelta(days=3))
+                               ).order_by('date_required')
+
+    def changelist_view(self, request, extra_context=None):
+        if not request.META.get('QUERY_STRING') and (request.META.get('HTTP_REFERER') is None or request.META.get('HTTP_REFERER').split('?')[0] != request.build_absolute_uri('?')):
+            return HttpResponseRedirect('?date_required__gte={}&date_required__lt={}'.format(datetime.date.today(), datetime.date.today() + datetime.timedelta(days=8)))
+        return super().changelist_view(request, extra_context)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return True
+
+    def has_module_permission(self, request):
+        return True
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        form = super().get_form(request, obj, change, **kwargs)
+        form.clean_status = clean_status
+        return form
+
+    def get_changelist_form(self, request, **kwargs):
+        form = super().get_changelist_form(request, **kwargs)
+        form.clean_status = clean_status
+        return form
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.datetime_ordered = datetime.datetime.now()
+        return super().save_model(request, obj, form, change)
+
+    def complete(self, request, queryset):
+        for order in queryset:
+            err_msg = order.do_complete(user=request.user)
+            if err_msg:
+                messages.error(request, err_msg)
+            else:
+                messages.info(request, f'Objednávka č. { order.id } byla zabalena')
+
+    complete.short_description = 'zabalit'
+
+
+production_admin.register(ToDoOrder, ToDoOrderAdmin)
+production_admin.register(OrderedProduct, ProductionOrderedProductAdmin)
+production_admin.register(models.StockTransaction, ProductionStockTransactionAdmin)
+production_admin.register(TodayDeliveryOrder, ProductionTodayDeliveryOrderAdmin)

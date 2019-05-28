@@ -51,6 +51,6 @@
     </table>
     <form method="post" autocomplete="off">
         {% csrf_token %}
-        <div style="margin: 1em auto"><input type="submit" name="back_to_edit_order" value="Upravit objednávku"><input type="submit" value="Potvrdit a objednat"></div>
+        <div style="margin: 1em auto"><input type="submit" name="back_to_edit_order" value="Upravit objednávku" formnovalidate><input type="submit" value="Potvrdit a objednat"></div>
     </form>
 {% endblock %}

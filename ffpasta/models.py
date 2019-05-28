@@ -27,7 +27,7 @@ class PriceCategory(models.Model):
 class Product(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.__class__.__name__ != 'Product':
+        if self.__class__.__name__ not in ['Product', 'OrderedProduct']:
             self._meta.get_field('img').choices = [(name, name) for name in listdir(
                 settings.STATIC_ROOT + '/ffpasta/img/' + self.__class__.__name__.lower())]
     name = models.CharField('název', max_length=30, unique=True)
@@ -110,9 +110,11 @@ class StockTransaction(models.Model):
     quantity = models.PositiveSmallIntegerField('množství',)
     datetime = models.DateTimeField('datum a čas', auto_now_add=True)
     transaction_type = models.CharField('druh pohybu', max_length=1, choices=TYPE_CHOICES)
-    committed_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='uživatel', on_delete=models.PROTECT)
+    committed_by = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='uživatel', on_delete=models.PROTECT,
+                                     editable=False)
     note = models.CharField('poznámka', max_length=150, null=True, blank=True)
-    order = models.ForeignKey('Order', verbose_name='objednávka', on_delete=models.SET_NULL, null=True, blank=True)
+    order = models.ForeignKey('Order', verbose_name='objednávka', on_delete=models.SET_NULL, editable=False,
+                              null=True, blank=True)
 
     class Meta:
         verbose_name = 'pohyb skladu'
@@ -123,9 +125,9 @@ class StockTransaction(models.Model):
         if self.id is None:
             with transaction.atomic():
                 self._process()
-                return super().save(*args, **kwargs)
+                super().save(*args, **kwargs)
         else:
-            return super().save(*args, **kwargs)
+            super().save(*args, **kwargs)
 
     def clean(self):
         super().clean()
@@ -346,7 +348,7 @@ class Order(models.Model):
                     StockTransaction.objects.create(quantity=item.quantity, product=item.product, committed_by=user,
                                                     order=self, transaction_type='c')
             return None
-        return self.MANAGE_ERR_MSG.format(self.id, 'odmítnuta', self.get_status_display())
+        return self.MANAGE_ERR_MSG.format(self.id, 'zabalena', self.get_status_display())
 
     def send_manage_token_to_admins(self, token):
         message = f'Zákazník { self.customer } si objednal tyto produkty:\n\n{ self.items_to_str() }\n\n' \
