@@ -4,10 +4,7 @@ import os, django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
 django.setup()
 
-from django.contrib.auth.models import Group
-
 from ffpasta import models
-
 
 
 price_categories = [{
@@ -147,7 +144,7 @@ sections = [{
             '393 01 Pelhřimov<br />'
             'IČ 04706412<br />'
             '+420 720 309 514<br />'
-            'info@FFpasta.cz</p>',
+            'info@ffpasta.cz</p>',
     'widget': 'c',
 }]
 
@@ -179,6 +176,3 @@ if not models.Section.objects.all().exists():
     for s in sections:
         print(s['headline'])
         models.Section(headline=s['headline'], link=s['link'], text=s['text'], widget=s['widget']).save()
-
-if not Group.objects.all().exists():
-    Group.objects.create(name='Pracovník')
