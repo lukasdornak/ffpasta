@@ -27,9 +27,7 @@ class PriceCategory(models.Model):
 class Product(models.Model):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.__class__.__name__ not in ['Product', 'OrderedProduct']:
-            self._meta.get_field('img').choices = [(name, name) for name in listdir(
-                settings.STATIC_ROOT + '/ffpasta/img/' + self.__class__.__name__.lower())]
+        self._meta.get_field('img').choices = [(name, name) for name in listdir(settings.STATIC_ROOT + '/ffpasta/img/product')]
     name = models.CharField('název', max_length=30, unique=True)
     description = RichTextField('popis', blank=True, null=True)
     img = models.CharField('obrázek', max_length=50)
@@ -51,7 +49,6 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         self.slug = slugify(self.name)
-        self.img_url = self.get_img_url()
         return super().save(*args, **kwargs)
 
     def clean(self):
@@ -61,8 +58,8 @@ class Product(models.Model):
         if self.price_category is None and self.unit_price is None:
             raise ValidationError('Je třeba nastavit buď jednotkovou cenu a nebo cenovou kategorii.')
 
-    def get_img_url(self):
-        return '{}ffpasta/img/{}/{}'.format(settings.STATIC_URL, self.__class__.__name__.lower(), self.img)
+    def img_url(self):
+        return '{}ffpasta/img/product/{}'.format(settings.STATIC_URL, self.img)
 
     def get_unit(self):
         if hasattr(self, 'pasta'):
@@ -81,7 +78,7 @@ class Product(models.Model):
         return self.og_description or self.one_line_description()
 
     def get_og_img_url(self):
-        return self.img_url.replace('.png', '_black.png')
+        return self.img_url().replace('.png', '_black.png')
 
     def assign_to_price_category(self, price_category):
         if self.price_category == price_category:
