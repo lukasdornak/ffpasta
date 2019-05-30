@@ -4,7 +4,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 SECRET_KEY = os.environ.get('SECRET_KEY', 'not secret key')
 
-DEBUG = True
+DEBUG = False
+
+ADMINS = [('Lukáš Dorňák', 'lukasdornak@gmail.com')]
+
+MANAGERS = ADMINS
 
 DOMAIN = os.environ.get('DOMAIN', 'localhost')
 
@@ -22,6 +26,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'django.middleware.common.BrokenLinkEmailsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
