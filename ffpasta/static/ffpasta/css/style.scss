@@ -12,12 +12,15 @@ $light: #EAE4DC;
 $color-green: #b0e4a4;
 $color-red: #ffada4;
 
+html {
+    font-size: 16px;
+}
+
 body {
     width: 100vw;
     padding: 0;
     margin: 0 auto;
     font-family: G;
-    font-size: 16px;
     text-align: center;
     background-color: $light;
     overflow-x: hidden;
@@ -27,7 +30,7 @@ body.stop {
     position: fixed;
 }
 h1 {
-    font-size: 2em;
+    font-size: 1.6rem;
 }
 h1, h2 {
     display: inline-block;
@@ -54,12 +57,13 @@ a.bordered {
     text-align: center;
 }
 h2 {
-    font-size: 1.6em;
+    font-size: 1.4rem;
 }
 h3 {
-    font-size: 1.4em;
+    font-size: 1.2rem;
 }
 h4 {
+    font-size: 1.2rem;
     font-weight: bold;
 }
 .reason_header {
@@ -77,12 +81,12 @@ header {
     position: fixed;
     top: 0;
     left: 0;
-    background-image: linear-gradient(#fbfbfb, rgba(251, 251, 251, 1), rgba(251, 251, 251, 0.9), rgba(251, 251, 251, 0.6), rgba(251, 251, 251, 0));
+    background-image: linear-gradient(#fbfbfb, #fbfbfb, rgba(251, 251, 251, 0.95), rgba(251, 251, 251, 0.63), rgba(251, 251, 251, 0));
     z-index: 100;
 }
 
 #logo {
-    height: 110px;
+    height: 80px;
 }
 
 #menu_button {
@@ -119,6 +123,13 @@ header {
     img {
         height: 40px;
     }
+    a.logo_mpmr {
+        display: none;
+    }
+}
+
+.logo_mpmr img {
+    height: 50px;
 }
 
 #social_foot img {
@@ -149,7 +160,7 @@ nav {
     height: 100vh;
     max-height: 460px;
     overflow: hidden;
-    a{
+    a {
         flex-grow: 1;
         text-decoration: none;
         color: inherit;
@@ -168,7 +179,7 @@ nav {
 }
 
 #id-uvod {
-    background-image: linear-gradient(#fbfbfb, rgba(251, 251, 251, 0.7), rgba(251, 251, 251, 0)), url("../img/intro_768x768.png");
+    background-image: linear-gradient(#fbfbfb, rgba(251, 251, 251, 0)), url("../img/intro_768x768.png");
     padding-top: 87vw;
     background-size: 100% auto;
     background-position: center top;
@@ -179,7 +190,7 @@ nav {
 #motto {
     width: 100%;
     h1 {
-        margin: 0 auto;
+        margin: 0.5em auto;
         width: 85%;
     }
     span {
@@ -586,7 +597,7 @@ table.overview {
 
 @media (min-aspect-ratio: 1/1) {
     #id-uvod {
-        background-image: linear-gradient(#fbfbfb, rgba(251, 251, 251, 0.7), rgba(251, 251, 251, 0)), url("../img/intro_768x33.png");
+        background-image: linear-gradient(#fbfbfb, rgba(251, 251, 251, 0)), url("../img/intro_768x33.png");
         padding-top: 33vw;
     }
 }
@@ -632,7 +643,7 @@ table.overview {
 /* Medium devices */
 @media (min-width: 769px) {
     #id-uvod {
-        background-image: linear-gradient(#fbfbfb, rgba(251, 251, 251, 0.7), rgba(251, 251, 251, 0)), url("../img/intro_1920x33.png");
+        background-image: linear-gradient(#fbfbfb, rgba(251, 251, 251, 0)), url("../img/intro_1920x33.png");
         padding-top: calc(33vw - 50px);
     }
 }
@@ -642,7 +653,7 @@ table.overview {
     .to_767 {
         display: none;
     }
-    body {
+    html {
         font-size: 18px;
     }
     .page {
@@ -714,7 +725,10 @@ table.overview {
 
 }
 @media (min-width: 992px) {
-    body {
+    .to_992 {
+        display: none;
+    }
+    html {
         font-size: 20px;
     }
     header {
@@ -728,14 +742,35 @@ table.overview {
         padding: 0;
         background: none;
         height: 3em;
-        justify-content: space-evenly;
-        max-width: 1200px;
+        justify-content: center;
+        max-width: 600px;
         a {
-            padding:0;
-            flex-grow: 1;
+            font-size: 1.1em;
+            padding: 0 0.3em;
+            flex-grow: 0;
             text-align: center;
         }
     }
+
+    #logo {
+        height: 110px;
+    }
+
+    #social_head {
+        margin-top: 5px;
+        margin-right: 5px;
+        img {
+            height: 50px;
+        }
+        a {
+            display: none;
+            &.logo_mpmr {
+                display: inline-block;
+            }
+        }
+    }
+
+
 
     #items_page {
         width: 80%;
@@ -758,7 +793,7 @@ table.overview {
 
 /* Extra large devices */
 @media (min-width: 1200px) {
-    body {
+    html {
         font-size: 22px;
     }
     .circs .circ {
