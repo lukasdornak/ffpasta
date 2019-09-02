@@ -20,7 +20,6 @@ class Home(ListView):
     model = models.Section
     template_name = 'ffpasta/index.html'
 
-
     def get_context_data(self, *args, **kwargs):
         context_data = super().get_context_data(*args, **kwargs)
         for obj in self.object_list:
@@ -50,14 +49,9 @@ class LoginView(LoginView):
         logout(request)
         return super().get(request, *args, **kwargs)
 
-    def get_success_url(self):
-        password = self.request.POST.get('password')
-        if len(password) < 8:
-            messages.add_message(self.request, messages.INFO,
-                                 'Vítejte v objednávkovém systému FFpasta. Než začnete objednávat, '
-                                 'nastavte si, prosím, nové heslo. Děkujeme, za pochopení')
-            return '/zmena-hesla/'
-        return super().get_success_url()
+class UserCreateView(CreateView):
+    model = User
+    template_name = 'ffpasta/login.html'
 
 
 class ProductDetailView(DetailView):

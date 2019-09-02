@@ -1,0 +1,45 @@
+{% for object in object_list %}{% with object.get_delivery_note_recipient as recipient %}
+<div style="page-break-before: always" >
+    <p>
+        <b>Dodací list č. {{ object.delivery_note_number }}</b><br>
+        ze dne: {{ object.date_required }}<br>
+    </p>
+    <table style="width:100%">
+        <thead>
+            <tr>
+                <th>dodavatel</th>
+                <th>odběratel</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Filip Hložek</td>
+                <td>{{ recipient.name }}</td>
+            </tr>
+            <tr>
+                <td>Vnitřní 973</td>
+                <td>{{ recipient.street }}</td>
+            </tr>
+            <tr>
+                <td>393 01 Pelhřimov</td>
+                <td>{{ recipient.postal_code }} {{ recipient.city }}</td>
+            </tr>
+            <tr>
+                <td>IČ 04706412</td>
+                <td>IČ {{ recipient.ico }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <p>Na základě objednávky <b>č. {{ object.id }}</b><br>ze dne: <b>{{ object.datetime_ordered|date:"j. n. Y" }}</b><br>Vám dodáváme toto zboží:</p>
+    <ul>
+        {% for item in object.get_items %}
+        <li>{{ item.product.name }}: {{ item.quantity }}{{ item.product.get_unit }}</li>
+        {% endfor %}
+    </ul>
+    <p>
+        <br><br><br><br><br>
+        zboží převzal a vlastnoručním podpisem stvrzuju:<br><br><br><br><br>
+        ....................
+    </p>
+</div>
+{% endwith %}{% endfor %}

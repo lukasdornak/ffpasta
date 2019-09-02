@@ -1,11 +1,13 @@
 import datetime
+import weasyprint
 
 from django.contrib.admin import AdminSite
 from django.contrib import admin, messages
 from django.db.models import Sum
-from django.http import HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.forms import ValidationError
 from django.shortcuts import redirect
+from django.template.loader import get_template
 from django.utils.translation import gettext_lazy as _
 from django.utils.safestring import mark_safe
 
@@ -100,6 +102,11 @@ class PriceInline(admin.TabularInline):
     extra = 0
 
 
+class AddressInline(admin.TabularInline):
+    model = models.Address
+    extra = 0
+
+
 class HasIcoFilter(admin.SimpleListFilter):
     title = 'Ičo'
     parameter_name = 'má ičo'
@@ -141,13 +148,17 @@ class HasIdIDokladFilter(admin.SimpleListFilter):
 @admin.register(models.Customer)
 class CustomerAdmin(admin.ModelAdmin):
     form = forms.CustomerAdminForm
-    list_display = ['name', 'ico', 'delivery', 'user', 'has_id_idoklad']
+    list_display = ['name', 'ico', 'user', 'has_id_idoklad']
     list_filter = ['delivery', HasIcoFilter, HasIdIDokladFilter]
-    actions = ['connect']
-    inlines = [PriceInline, ]
+    filter_horizontal = ['delivery']
+    actions = ['sync_customers_to_idoklad', 'sync_customers_from_idoklad']
+    inlines = [AddressInline, PriceInline]
     fieldsets = (
         (None, {
-            'fields': ('name', 'address', 'ico', 'delivery', 'user'),
+            'fields': ('name', 'ico', 'delivery', 'user'),
+        }),
+        ('Fakturační adresa', {
+            'fields': ('street', 'postal_code', 'city'),
         }),
     )
 
@@ -157,10 +168,14 @@ class CustomerAdmin(admin.ModelAdmin):
     def has_id_idoklad(self, obj):
         return bool(obj.id_idoklad)
 
-    def connect(self, request, queryset):
-        idoklad.connect_customers(customers=queryset)
+    def sync_customers_to_idoklad(self, request, queryset):
+        idoklad.sync_customers_to_idoklad(customers=queryset)
 
-    connect.short_description = 'propojit s kontakty v iDokladu'
+    def sync_customers_from_idoklad(self, request, queryset):
+        idoklad.sync_customers_from_idoklad(customers=queryset)
+
+    sync_customers_to_idoklad.short_description = 'synchronizovat kontakty v iDokladu podle zákazníků'
+    sync_customers_from_idoklad.short_description = 'synchronizovat zákazníky podle kontaktů v iDokladu'
     has_id_idoklad.short_description = 'kontakt iDokladu'
     has_id_idoklad.boolean = True
 
@@ -229,13 +244,18 @@ def clean_status(self):
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
     date_hierarchy = 'date_required'
-    list_display = ['__str__', 'customer_note', 'customer', 'short_datetime', 'short_date', 'invoiced', 'status', 'my_note']
-    list_filter = (('date_required', FutureDateFieldFilter), 'status')
+    list_display = ['__str__', 'customer_note', 'customer', 'short_datetime', 'short_date', 'invoiced', 'delivery_note_number', 'status', 'my_note']
+    list_filter = (
+        ('date_required', admin.DateFieldListFilter),
+        ('date_required', FutureDateFieldFilter),
+        'status')
     readonly_fields = ['datetime_ordered', 'invoiced']
     list_editable = ['my_note']
     change_form_template = 'ffpasta/admin/order_change_form.html'
     inlines = [ItemInline]
-    actions = ['reject', 'confirm', 'complete']
+    actions = ['reject', 'confirm', 'complete', 'create_delivery_note', 'download_delivery_note',
+               'invoice_by_order', 'invoice_by_delivery_notes']
+    search_fields = ['customer__name', 'customer__id']
 
     def short_datetime(self, obj):
         return obj.datetime_ordered.strftime("%d.%m. %H:%M")
@@ -320,10 +340,51 @@ class OrderAdmin(admin.ModelAdmin):
             else:
                 messages.info(request, f'Objednávka č. { order.id } byla dokončena')
 
+    def create_delivery_note(self, request, queryset):
+        for order in queryset:
+            delivery_note_number = order.create_delivery_note()
+            if isinstance(delivery_note_number, int):
+                messages.info(request, f'Pro objednávku č. { order.id } byl vytvořen dodací list č. { delivery_note_number }')
+            else:
+                messages.error(request, delivery_note_number)
+
+    def download_delivery_note(self, request, queryset):
+        queryset = queryset.filter(delivery_note_number__isnull=False)
+        if queryset.exists():
+            delivery_note_html = get_template('ffpasta/delivery_notes.html').render(context={'object_list':queryset})
+            pdf_file = weasyprint.HTML(string=delivery_note_html).write_pdf()
+            response = HttpResponse(pdf_file, content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="dodaci_listy.pdf"'
+            return response
+
+    def invoice_by_order(self, request, queryset):
+        err_list = models.Order.invoice_multiple(queryset)
+        if err_list:
+            for order in err_list:
+                messages.error(request, f'Objednávku č. { order.id } se nepodařilo vyfakturovat')
+
+    def invoice_by_delivery_notes(self, request, queryset):
+        queryset = queryset.filter(invoiced=False, delivery_note_number=None)
+        if not queryset.exists():
+            messages.error(request, f'Žádné nevyfakturované dodací listy nebyly vybrány')
+            return None
+        if queryset.exlude(customer=queryset.first().customer).exists():
+            messages.error(request, f'Vybrané dodací listy jsou pro různé zákazníky')
+            return None
+        response = models.Order.invoice_delivery_notes(queryset)
+        if response:
+            messages.error(request, f'Dodací listy se nepodařilo vyfakturovat')
+        else:
+            messages.info(request, f'Dodací listy byly úspěšně vyfakturovány')
+
+
     reject.short_description = 'odmítnout'
     confirm.short_description = 'potvrdit'
     complete.short_description = 'dokončit'
-
+    create_delivery_note.short_description = 'vytvořit dodací listy'
+    download_delivery_note.short_description = 'stáhnout dodací listy'
+    invoice_by_order.short_description = 'fakturovat jednotlivé obědnávky'
+    invoice_by_delivery_notes.short_description = 'fakturovat dodací listy'
 
 class TodayDeliveryOrder(models.Order):
     class Meta:
@@ -332,7 +393,7 @@ class TodayDeliveryOrder(models.Order):
         verbose_name_plural = 'dnešní rozvoz'
 
     def customer_address(self):
-        return self.customer.address
+        return self.address
 
     customer_address.short_description = 'adresa'
 

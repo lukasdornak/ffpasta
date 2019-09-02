@@ -1,3 +1,4 @@
+import json
 from os import listdir
 from datetime import date, timedelta
 
@@ -31,7 +32,6 @@ class Product(models.Model):
     name = models.CharField('název', max_length=30, unique=True)
     description = RichTextField('popis', blank=True, null=True)
     img = models.CharField('obrázek', max_length=50)
-    img_url = models.CharField(max_length=100, null=True, editable=False)
     published = models.BooleanField('publikováno', default=True)
     active = models.BooleanField('v nabídce', default=True)
     slug = models.SlugField(editable=False)
@@ -198,6 +198,15 @@ class Delivery(models.Model):
                 days.append(index)
         return days
 
+    @property
+    def get_default_days(self):
+        field_names = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+        days = []
+        for index, field_name in enumerate(field_names):
+            if Delivery.objects.filter(**{field_name: True}).exists():
+                days.append(index)
+        return days
+
 
 class Price(models.Model):
     customer = models.ForeignKey('Customer', on_delete=models.CASCADE, verbose_name='zákazník')
@@ -218,14 +227,30 @@ class Price(models.Model):
             raise ValidationError('Vyber cenovou kateorii, nebo kontrétní produkt, pro který chceš nastavit cenu.')
 
 
+class Address(models.Model):
+    street = models.CharField('ulice a čp', max_length=50)
+    postal_code = models.DecimalField('PSČ', max_digits=5, decimal_places=0)
+    city = models.CharField('město', max_length=50)
+    customer = models.ForeignKey('Customer', on_delete=models.CASCADE, verbose_name='Zákazník')
+
+    class Meta:
+        verbose_name = 'dodací adresa'
+        verbose_name_plural = 'dodací adresy'
+
+    def __str__(self):
+        return f'{ self.customer }: { self.street }, { self.city }'
+
+
 class Customer(models.Model):
     name = models.CharField('jméno', max_length=50)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='customer',
                                 verbose_name='uživatel', on_delete=models.PROTECT, unique=True, blank=True)
-    address = models.CharField('adresa', max_length=200, null=True, blank=True)
     id_idoklad = models.PositiveSmallIntegerField('id iDoklad', null=True, editable=False)
     ico = models.DecimalField('ičo', max_digits=8, decimal_places=0, null=True, blank=True)
-    delivery = models.ForeignKey('Delivery', on_delete=models.PROTECT, verbose_name='Závoz')
+    delivery = models.ManyToManyField('Delivery', verbose_name='Závoz', null=True, blank=True)
+    street = models.CharField('ulice a čp', max_length=50, null=True, blank=True)
+    postal_code = models.DecimalField('PSČ', max_digits=5, decimal_places=0, null=True, blank=True)
+    city = models.CharField('město', max_length=50, null=True, blank=True)
 
     class Meta:
         verbose_name = 'zákazník'
@@ -234,8 +259,13 @@ class Customer(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, **kwargs):
+        super().save(**kwargs)
+        if self.ico and not self.id_idoklad:
+            idoklad.sync_customers_to_idoklad(Customer.objects.filter(id=self.id))
+
     def get_dates(self):
-        days = self.delivery.get_days()
+        days = self.delivery.get_days() if self.delivery else Delivery.get_default_days
         dates = []
         minimal = 1 if timezone.now().hour < 12 else 2
         start_day = date.today() + timedelta(days=minimal)
@@ -247,6 +277,11 @@ class Customer(models.Model):
 
     def get_ico(self):
         return f'{int(self.ico):08d}' if self.ico else ''
+
+    def self_register(self, email, ico, password):
+        user = User.objects.create_user(email=email, password=password)
+        obj = Customer.objects.create(user=user, ico=ico)
+        return obj
 
 
 class Order(models.Model):
@@ -268,6 +303,9 @@ class Order(models.Model):
     my_note = models.CharField('moje poznámka', max_length=100, null=True, blank=True)
     customer_note = models.CharField('poznámka zákazníka', max_length=100, null=True, blank=True)
     invoiced = models.BooleanField('fakturováno', default=False, editable=False)
+    address =  models.ForeignKey(Address, on_delete=models.SET_NULL, verbose_name='dodací adresa', null=True, blank=True)
+    delivery_note_number = models.PositiveSmallIntegerField('č. dodacího listu', null=True, editable=False)
+    delivery_note_recipient = models.CharField(max_length=150, null=True, editable=False)
 
     class Meta:
         verbose_name = 'objednávka'
@@ -283,19 +321,53 @@ class Order(models.Model):
         return ', '.join(['{} {}{}'.format(item.name, item.quantity, item.product.get_unit()) for item in self.get_items()])
 
     def items_for_idoklad(self):
-        return [{
+        return idoklad.ItemList([
+            idoklad.Item({
             'Amount': item.quantity,
             'Name': item.name,
             'Unit': item.product.get_unit(),
-            'UnitPrice': float(item.unit_price) } for item in self.get_items()]
+            'UnitPrice': float(item.unit_price) }) for item in self.get_items()
+        ])
 
-    def invoice(self):
-        response = idoklad.post_invoice(order=self)
+    def invoice(self, **kwargs):
+        response = idoklad.post_invoice(customer=self.customer, items=self.items_for_idoklad(), **kwargs)
         if response.status_code == 200:
             self.invoiced = True
             self.save(update_fields=['invoiced'])
             return 0
         return response
+
+    @classmethod
+    def invoice_multiple(cls, queryset):
+        err_list = []
+        for order in queryset:
+            response = order.invoice()
+            if response != 0:
+                err_list.append(order)
+        return err_list if len(err_list) else 0
+
+    @classmethod
+    def delivery_notes_invoice_title(cls, queryset):
+        if len(queryset) > 1:
+            return  "Na základě dodacích listů:\n{}Vám fakturujeme tyto položky:".format(
+                ''.join([f'č. { order.delivery_note_number } ze dne { order.date_required }\n' for order in queryset]) )
+        order = queryset.first()
+        return f'Na základě dodacího listu č. { order.delivery_note_number } ze dne { order.date_required } Vám fakturujeme tyto položky:'
+
+    @classmethod
+    def invoice_delivery_notes(cls, queryset):
+        customer = queryset.first().customer if queryset.exists() else None
+        if customer is not None:
+            queryset.filter(customer=customer) # prevent multiple customers in queryset
+            item_list = idoklad.ItemList()
+            for order in queryset.iterator():
+                item_list += order.items_for_idoklad()
+            response = idoklad.post_invoice(customer=customer, items=item_list,
+                                            ItemsTextPrefix=cls.delivery_notes_invoice_title(queryset))
+            if response.status_code == 200:
+                queryset.update(invoiced=True)
+                return 0
+            return response
 
     def is_history(self):
         return self.date_required < date.today()
@@ -347,6 +419,24 @@ class Order(models.Model):
             return None
         return self.MANAGE_ERR_MSG.format(self.id, 'zabalena', self.get_status_display())
 
+    def create_delivery_note(self):
+        if self.delivery_note_number is not None:
+            return f'Objednávka č. { self.id } již má dodací list č. { self.delivery_note_number }'
+        self.delivery_note_number = Order.next_delivery_note_number()
+        self.delivery_note_recipient = json.dumps({
+            'name': self.customer.name,
+            'ico': str(self.customer.ico),
+            'street': self.customer.street,
+            'postal_code': str(self.customer.postal_code),
+            'city': self.customer.city,
+            'delivery_address': f'{ self.address.street }, { self.address.postal_code } { self.address.city }' if self.address else None
+        })
+        self.save(update_fields=['delivery_note_number', 'delivery_note_recipient'])
+        return self.delivery_note_number
+
+    def get_delivery_note_recipient(self):
+        return json.loads(self.delivery_note_recipient if self.delivery_note_recipient else '{}')
+
     def send_manage_token_to_admins(self, token):
         message = f'Zákazník { self.customer } si objednal tyto produkty:\n\n{ self.items_to_str() }\n\n' \
                   f'a rád by je dostal: { self.date_required.strftime("%-d.%-m. %Y") }.\n\n' \
@@ -359,6 +449,11 @@ class Order(models.Model):
         for admin_user in admin_users.iterator():
             if admin_user.has_perm('ffpasta.can_change_order'):
                 admin_user.email_user(subject='Nová objednávka', from_email='admin@ffpasta.cz', message=message)
+
+    @classmethod
+    def next_delivery_note_number(cls):
+        last = cls.objects.order_by('delivery_note_number').last()
+        return (last.delivery_note_number if last and last.delivery_note_number else 0) + 1
 
 
 class Item(models.Model):
