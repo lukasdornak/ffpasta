@@ -131,8 +131,10 @@ class ItemAdminForm(forms.ModelForm):
 
 ItemAdminFormSet = forms.inlineformset_factory(models.Order, models.Item, form=ItemAdminForm, extra=1)
 
+
 class ForgottenPasswordForm(forms.Form):
     email = forms.EmailField(label='Zadejte e-mail, který používáte pro přhlášení')
+
 
 class ChangePasswordForm(forms.Form):
     password = forms.CharField(label='Zadejte, prosím, nové heslo', max_length=64, min_length=8, widget=forms.PasswordInput)
@@ -145,6 +147,7 @@ class ChangePasswordForm(forms.Form):
         else:
             raise ValidationError('Hesla se neshodují')
 
+
 class StockTransactionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -154,6 +157,7 @@ class StockTransactionForm(forms.ModelForm):
     class Meta:
         model = models.StockTransaction
         exclude = []
+
 
 class PriceAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -165,3 +169,17 @@ class PriceAdminForm(forms.ModelForm):
     class Meta:
         model = models.Item
         exclude = ('customer',)
+
+
+class RegistrationForm(forms.ModelForm):
+    email = forms.EmailField(label='e-mail', required=True)
+    ico = forms.DecimalField(label='ič', max_digits=8, required=True)
+    password = forms.CharField(label='heslo', max_length=64, min_length=8, widget=forms.PasswordInput, required=True)
+    password1 = forms.CharField(label='heslo', max_length=64, min_length=8, widget=forms.PasswordInput, required=True)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data['password'] == cleaned_data['password1']:
+            return cleaned_data
+        else:
+            raise ValidationError('Hesla se neshodují')

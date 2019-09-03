@@ -43,7 +43,7 @@ class ContactView(FormView):
 
 class LoginView(LoginView):
     template_name = 'ffpasta/login.html'
-    contact_form = forms.ContactForm
+    registration_form = forms.RegistrationForm
 
     def get(self, request, *args, **kwargs):
         logout(request)
