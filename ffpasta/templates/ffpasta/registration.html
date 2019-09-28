@@ -1,0 +1,24 @@
+{% extends 'ffpasta/base.html' %}{% load static %}
+
+{% block title %}{{ block.super }} | Registrace{% endblock %}
+
+{% block content %}
+    <div class="base_form">
+        <h1 class="bordered">Registrace</h1>
+        <form method="post" action="/registrace/">
+            {% csrf_token %}
+            <input type="hidden" name="from_url" value="{{ from_url }}">
+            {% for field in form %}
+            <div>
+                {{ field.label_tag }}
+            </div>
+            <div>{{ field }}{{ field.errors }}</div>
+            {% endfor %}
+            <div>{% for error in form.non_field_errors %}{{ error }}{% endfor %}</div>
+            <div class="center">
+                <input type="submit" value="Registrovat" name="register">
+                <input type="submit" value="Přihlášení" name="login" formnovalidate>
+            </div>
+        </form>
+    </div>
+{% endblock %}

@@ -93,15 +93,17 @@ def access_decorator(original_function):
     return wrapper_function
 
 
+def get(_get, *args, **kwargs):
+    response = _get(*args, **kwargs)
+    if response.status_code == 200:
+        return json.loads(response.text)
+    return {}
+
+
 @access_decorator
-def _get_default_invoice(headers):
+def _default_invoice(headers):
     url = settings.IDOKLAD_API_URL + '/api/v2/IssuedInvoices/Default'
     return requests.get(url=url, headers=headers)
-
-
-def get_default_invoice():
-    _default_invoice = _get_default_invoice()
-    return json.loads(_default_invoice.text)
 
 
 @access_decorator
@@ -111,7 +113,7 @@ def post_invoice(headers, customer, items, **kwargs):
 
     Get a default invoice dictionary, update it with data and send it back.
     """
-    invoice = get_default_invoice()
+    invoice = get(_default_invoice)
     invoice['PurchaserId'] = customer.id_idoklad
     default_item = invoice['IssuedInvoiceItems'].pop(0)
     for item in items:
@@ -125,14 +127,9 @@ def post_invoice(headers, customer, items, **kwargs):
 
 
 @access_decorator
-def _get_contacts(headers):
+def _contacts(headers):
     url = settings.IDOKLAD_API_URL + '/api/v2/Contacts'
     return requests.get(url=url, headers=headers)
-
-
-def get_contacts():
-    _contacts = _get_contacts()
-    return json.loads(_contacts.text)['Data']
 
 
 def sync_customers_from_idoklad(customers):
@@ -142,7 +139,7 @@ def sync_customers_from_idoklad(customers):
     Get all contacts from iDoklad, then iterate through given Customer queryset
     if contact with the same ico found, update Customer with contact's data.
     """
-    contacts = get_contacts()
+    contacts = get(_contacts).get('Data')
     for customer in customers.iterator():
         ico = customer.get_ico()
         for contact in contacts:
@@ -159,14 +156,9 @@ def sync_customers_from_idoklad(customers):
 
 
 @access_decorator
-def _get_contact_by_id(headers, id):
+def _contact_by_id(headers, id):
     url = settings.IDOKLAD_API_URL + '/api/v2/Contacts/' + str(id)
     return requests.get(url=url, headers=headers)
-
-
-def get_contact_by_id(id):
-    _default_contact = _get_default_contact(id)
-    return json.loads(_default_contact.text)
 
 
 @access_decorator
@@ -176,9 +168,9 @@ def put_contact(headers, contact, **kwargs):
 
     Get current contact from iDoklad by id, update it, and send back to iDoklad
     """
-    remote_contact = get_contact_by_id(id=contact['Id'])
+    remote_contact = get(_contact_by_id, id=contact['Id'])
     remote_contact.update(contact)
-    url = settings.IDOKLAD_API_URL + '/api/v2/Contacts/' + contact['Id']
+    url = settings.IDOKLAD_API_URL + '/api/v2/Contacts/' + str(contact['Id'])
     headers.update({'Content-Type': 'application/json'})
     return requests.put(url=url, data=json.dumps(remote_contact), headers=headers)
 
@@ -192,7 +184,7 @@ def sync_customers_to_idoklad(customers):
     If contact has changed, put it to iDoklad.
     If no corresponding contact found, Post new one to iDoklad.
     """
-    contacts = get_contacts()
+    contacts = get(_contacts).get('Data')
     for customer in customers:
         ico = customer.get_ico()
         contact_found = False
@@ -206,15 +198,15 @@ def sync_customers_to_idoklad(customers):
                 if customer.street and customer.street != contact['Street']:
                     contact['Street'] = customer.street
                     contact_changed = True
-                if customer.postal_code and str(customer.postal_code) != contact['PostalCode']:
-                    contact['PostalCode'] = str(customer.postal_code)
+                if customer.postal_code is not None and str(customer.postal_code) != contact['PostalCode']:
+                    contact['PostalCode'] = customer.postal_code
                     contact_changed = True
                 if customer.city and customer.city != contact['City']:
                     contact['City'] = customer.city
                     contact_changed = True
-                customer.save(update_fields=['id_doklad'])
+                customer.save(update_fields=['id_idoklad'])
                 if contact_changed:
-                    put_contact(contact)
+                    put_contact(contact=contact)
                 contact_found = True
         if not contact_found:
             response = post_contact(customer=customer)
@@ -223,16 +215,10 @@ def sync_customers_to_idoklad(customers):
                 customer.save(update_fields=['id_idoklad'])
 
 
-
 @access_decorator
-def _get_default_contact(headers):
+def _default_contact(headers):
     url = settings.IDOKLAD_API_URL + '/api/v2/Contacts/Default'
     return requests.get(url=url, headers=headers)
-
-
-def get_default_contact():
-    _default_contact = _get_default_contact()
-    return json.loads(_default_contact.text)
 
 
 @access_decorator
@@ -243,13 +229,13 @@ def post_contact(headers, customer, **kwargs):
     Retrieve a default contact dictionary, update it with customer data and post it.
     Save customer with new id_doklad if success.
     """
-    contact = get_default_contact()
+    contact = get(_default_contact)
     contact.update({
         'CompanyName': customer.name,
         'IdentificationNumber': str(customer.ico),
         'Email': customer.user.email,
         'Street': customer.street,
-        'PostalCode': str(customer.postal_code),
+        'PostalCode': str(customer.postal_code) if customer.postal_code else None,
         'City': customer.city
     })
     url = settings.IDOKLAD_API_URL + '/api/v2/Contacts'

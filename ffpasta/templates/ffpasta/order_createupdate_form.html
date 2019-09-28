@@ -9,28 +9,51 @@
 
 {% block title %}{{ block.super }} | Nová objednávka{% endblock %}
 
-{% block header_left %}{% endblock %}
-
 {% block content %}
     <h1 class="bordered">Nová objednávka</h1>
     <form id="new_order_form" method="post" autocomplete="off">
         {% csrf_token %}
-        <div><label for="{{ form.date_required.id_for_label }}">Požadované {{ form.date_required.label|lower }}</label></div>{% for error in form.date_required.errors %}
-        <div>{{ error }}</div>{% endfor %}
+        <div{% if view.hide_addresses %} style="display:none"{% endif %}>
+            <div >
+                <label style="text-align:left" for="{{ form.address.id_for_label }}">{{ form.address.label }}</label>
+            </div>
+            {% for error in form.address.errors %}
+            <div>{{ error }}</div>
+            {% endfor %}
+            <div>
+                <div style="width:100%">{{ form.address }}</div>
+            </div>
+        </div>
+        <div class="new_order_label">
+            <label for="{{ form.date_required.id_for_label }}">Požadované {{ form.date_required.label|lower }}</label>
+        </div>
+        {% for error in form.date_required.errors %}
+        <div>{{ error }}</div>
+        {% endfor %}
         <div class="new_order_row">
             <div>{{ form.date_required }}</div>
-            <div><div id="next_delivery" class="bordered">příští závoz</div></div>
-        </div>{% for error in formset.non_form_errors %}
-        <div>{{ error }}</div>{% endfor %}
+            <div>
+                <div id="next_delivery" class="bordered">příští závoz</div>
+            </div>
+        </div>
+        {% for error in formset.non_form_errors %}
+        <div>{{ error }}</div>
+        {% endfor %}
         <div class="new_order_row">
-            <div>Položka</div>
-            <div>Množství</div>
+            <div class="new_order_label"><label>Položka</label></div>
+            <div class="new_order_label"><label>Množství</label></div>
         </div>
         <div id="items_formset">
-        {{ formset.management_form }}{% for form in formset %}
-            <div class="new_order_row">{% for field in form.visible_fields %}{% if forloop.counter <= 2 %}
-                <div>{{ field.errors }}{{ field }}{% if forloop.counter == 2 %}{% for field in form.hidden_fields %}{{ field }}{% endfor %}{% endif %}</div>{% endif %} {% endfor %}
-            </div>{% endfor %}
+            {{ formset.management_form }}
+            {% for form in formset %}
+            <div class="new_order_row">
+                {% for field in form.visible_fields %}{% if forloop.counter <= 2 %}
+                <div>{{ field.errors }}{{ field }}{% if forloop.counter == 2 %}
+                    {% for field in form.hidden_fields %}{{ field }}{% endfor %}{% endif %}
+                </div>{% endif %}
+                {% endfor %}
+            </div>
+            {% endfor %}
         </div>
         <div id="new_order_form_buttons">
             <div id="add_item" class="bordered">+</div>
@@ -42,13 +65,13 @@
 var dates = {{ view.dates|safe }};
 
 function nextDelivery() {
-    var date = dates[0].split('-');
+    var date = dates[getAddress()][0].split('-');
     $('#id_date_required').val(date[2] + '.' + date[1] + '.' + date[0]);
 }
 
 function refreshOptions(){
-    $('option').css('display', 'initial');
-    $('select').each(function(index){
+    $('#items_formset option').css('display', 'initial');
+    $('#items_formset select').each(function(index){
         $('option[value="' + $(this).val() + '"]').not(':selected').css('display', 'none');
     });
 }
@@ -66,11 +89,15 @@ function removeItem(n) {
     $('input[name=form-TOTAL_FORMS]').val(n-1);
 }
 
+function getAddress() {
+    return $('#id_address').children("option:selected").val();
+}
+
 $(function(){
     $('#id_date_required').datepicker({
         beforeShowDay: function(date) {
             var date_string = jQuery.datepicker.formatDate('yy-mm-dd', date);
-            return [dates.indexOf(date_string) !== -1];
+            return [dates[getAddress()].indexOf(date_string) !== -1];
         }
     });
     $.datepicker.regional['cs'] = {

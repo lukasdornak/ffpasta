@@ -1,0 +1,111 @@
+{% extends 'ffpasta/base.html' %}{% load static %}{% load l10n %}
+
+{% block title %}{{ block.super }} | Nastavení{% endblock %}
+
+{% block content %}
+    <div class="base_form">
+        <h1 class="bordered">Nastavení</h1>
+        {% if messages %}{% for message in messages %}
+        <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message|safe }}</p>
+        {% endfor %}{% endif %}
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}{% if field.field.is_boolean %}
+            <div>
+                {{ field }}
+                {{ field.label_tag }}
+            </div>{% else %}
+            <div>
+                {{ field.label_tag }}
+            </div>
+            <div>
+                {{ field }}
+            </div>{% endif %}{% if field.errors %}
+            <div>
+                {{ field.errors }}
+            </div>{% endif %}
+            {% endfor %}
+            {{ formset.management_form }}
+            <div id="delivery_addresses" style="display: none">
+                {% for form in formset %}
+                {% if not form.instance.id %}
+                <div class="new_delivery_address">
+                    <h3>Nová dodací adresa</h3>
+                {% else %}
+                <div class="old_delivery_address">
+                    smazat adresu:
+                {% endif %}
+                    {% for field in form.visible_fields %}{% if field.field.is_boolean %}
+                    <div>
+                        {{ field }}
+                        {{ field.label_tag }}
+                    </div>{% else %}
+                    <div>
+                        {{ field.label_tag }}
+                    </div>
+                    <div>
+                        {{ field }}
+                    </div>{% endif %}{% if field.errors %}
+                    <div>
+                        {{ field.errors }}
+                    </div>{% endif %}
+                    {% endfor %}
+                    {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+                </div>
+                <div>
+                    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                </div>
+                {% endfor %}
+                <div id="new_order_form_buttons">
+                    <div id="add_item" class="bordered">+</div>
+                    <div id="remove_item" class="bordered">−</div>
+                </div>
+            </div>
+            <dvi>
+                <input type="submit" value="Uložit změny">
+            </dvi>
+        </form>
+    </div>
+    <script>
+
+function addItem(){
+    var n = $('#delivery_addresses .new_delivery_address, #delivery_addresses .old_delivery_address').length;
+    if(n < 5){
+        var lastForm = $('#delivery_addresses .new_delivery_address').last().html();
+        var newForm = lastForm.split('form-' + (n-1));
+        $('#delivery_addresses').append('<div class="new_delivery_address">' + newForm.join('form-' + n).replace('selected', '') + '</div>');
+        $('input[name=form-TOTAL_FORMS]').val(n+1);
+    }
+}
+
+function removeItem() {
+    var n = $('#delivery_addresses .new_delivery_address, #delivery_addresses .old_delivery_address').length;
+    if(n > $('#delivery_addresses .old_delivery_address').length + 1) {
+        $('#delivery_addresses .new_delivery_address').last().remove();
+        $('input[name=form-TOTAL_FORMS]').val(n-1);
+    }
+}
+
+function toggle_addresses(){
+    if ($('#id_same_delivery_address:checked').length) {
+        $('#delivery_addresses').css('display', 'none');
+    } else {
+        $('#delivery_addresses').css('display', 'block');
+    }
+}
+
+$(function () {
+    toggle_addresses();
+    removeItem();
+    $(document).on('change', '#id_same_delivery_address', function () {
+        toggle_addresses();
+    });
+    $('#add_item').click(function(){
+        addItem();
+    });
+    $('#remove_item').click(function(){
+        removeItem();
+    });
+});
+    </script>
+{% endblock %}

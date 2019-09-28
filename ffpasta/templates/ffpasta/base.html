@@ -5,21 +5,37 @@
     <meta charset="utf-8">
     <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0">
     <title>{% block title %}FFpasta{% endblock %}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="{%  static '/ffpasta/js/menu-script.js' %}"></script>
     {% block head %}{% endblock %}
     <link rel="stylesheet" href="{%  static '/ffpasta/css/style.css' %}">
 </head>
-<body><div id="max_width">
-    <div id="orders_header">
-        <div>{% block header_left %}{% endblock %}</div>
-        <div>
-            <a href="/"><img src="{% static '/ffpasta/img/logo.png' %}" id="logo" alt="FFpasta logo"></a>
-        </div>
-        <div>{% block header_right %}
-            <span id="user_mail">{{ view.request.user.email }}</span><br>
-            <a href="/prihlaseni/" class="bordered">odhlásit se</a>{% endblock %}
-        </div>
-    </div>
+<body>
+<div id="max_width">
     {% block content %}{% endblock %}
-</div></body>
+</div>
+<header>
+    {% block header %}{% if request.user.is_authenticated %}
+    <div id="menu_button">
+        <div class="bar1"></div>
+        <div class="bar2"></div>
+        <div class="bar3"></div>
+    </div>{% endif %}
+    <div>
+        <a href="/#uvod"><img src="{%  static '/ffpasta/img/logo.png' %}" id="logo" alt="FFpasta logo"></a>
+    </div>{% if request.user.is_authenticated %}
+    <nav class="hidden">
+        <a href="/nova-objednavka/">OBJEDNAT</a>
+        <a href="/objednavky/">přehled</a>
+        <a href="/zakaznik/">zákazník</a>
+        <a href="/nastaveni/">nastavení</a>
+        <a href="/zmena-hesla/">změna hesla</a>
+        <a href="/prihlaseni/">odhlásit se</a>
+    </nav>
+    <div id="menu_button_placeholder"></div>
+    {% endif %}
+    {% endblock %}
+</header>
+</body>
 </html>

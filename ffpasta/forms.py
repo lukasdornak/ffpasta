@@ -32,11 +32,12 @@ class OrderCreateUpdateForm(forms.ModelForm):
 
     class Meta:
         model = models.Order
-        fields = ['customer', 'date_required', 'customer_note']
+        fields = ['customer', 'address', 'date_required', 'customer_note']
 
     def clean_date_required(self):
+        address = self.cleaned_data.get('address')
         data = self.cleaned_data.get('date_required')
-        if self.dates and str(data) not in self.dates:
+        if self.dates and str(data) not in self.dates[address.id]:
             raise ValidationError('Na požadované datum, není naplánován závoz.')
         return data
 
@@ -48,14 +49,15 @@ def clean(self):
     for form in self.cleaned_data:
         if hasattr(form['product'], 'pasta') and not form.get('DELETE', None):
             pasta_quantity += form['quantity']
-    if pasta_quantity > 0 and pasta_quantity < 5:
+    if 0 < pasta_quantity < 5:
         raise ValidationError('Minimální množství těstovin je 5kg')
 
 
 class ContactForm(forms.Form):
     email = forms.EmailField(label='E-mail')
     name = forms.CharField(label='Jméno', max_length=50)
-    message = forms.CharField(label='Zpráva', widget=forms.Textarea(attrs={'width':"100%", 'cols' : "80", 'rows': "5", }))
+    message = forms.CharField(label='Zpráva',
+                              widget=forms.Textarea(attrs={'width': "100%", 'cols': "80", 'rows': "5", }))
     from_url = forms.HiddenInput()
 
     def send_mail(self):
@@ -75,7 +77,7 @@ class CustomerAdminForm(forms.ModelForm):
 
     class Meta:
         model = models.Customer
-        fields = ['name', 'ico', 'delivery', 'user']
+        fields = ['name', 'ico', 'user']
 
     def clean_user(self):
         data = self.cleaned_data.get('user')
@@ -115,9 +117,28 @@ class ItemForm(forms.Form):
     quantity = forms.IntegerField(max_value=250, min_value=1)
     use_required_attribute = True
 
+
 ItemFormSet = forms.formset_factory(form=ItemForm, extra=0, min_num=1, max_num=10, validate_max=True, validate_min=True)
 ItemFormSet.clean = clean
 ItemFormSet.save = save
+
+
+class AddressForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, label_suffix='', **kwargs)
+        self.fields['customer'].widget = forms.HiddenInput()
+        if self.instance.id:
+            self.fields['street'].widget = forms.HiddenInput()
+            self.fields['postal_code'].widget = forms.HiddenInput()
+            self.fields['city'].widget = forms.HiddenInput()
+
+    class Meta:
+        model = models.Address
+        fields = ('customer', 'street', 'postal_code', 'city')
+
+
+AddressFormSet = forms.modelformset_factory(model=models.Address, form=AddressForm, extra=1, min_num=1, max_num=5,
+                                            validate_min=True, validate_max=True, can_delete=True)
 
 
 class ItemAdminForm(forms.ModelForm):
@@ -171,15 +192,26 @@ class PriceAdminForm(forms.ModelForm):
         exclude = ('customer',)
 
 
-class RegistrationForm(forms.ModelForm):
-    email = forms.EmailField(label='e-mail', required=True)
-    ico = forms.DecimalField(label='ič', max_digits=8, required=True)
-    password = forms.CharField(label='heslo', max_length=64, min_length=8, widget=forms.PasswordInput, required=True)
-    password1 = forms.CharField(label='heslo', max_length=64, min_length=8, widget=forms.PasswordInput, required=True)
+class RegistrationForm(forms.Form):
+    email = forms.EmailField(label='E-mail', required=True)
+    ico = forms.DecimalField(label='IČ', max_digits=8, required=True)
+    password = forms.CharField(label='Heslo', max_length=64, min_length=8, widget=forms.PasswordInput, required=True)
+    password1 = forms.CharField(label='Ověření hesla', max_length=64, min_length=8, widget=forms.PasswordInput, required=True)
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        if User.objects.filter(email=email).exists():
+            raise ValidationError('Uživatel s tímto emailem již existuje.')
+        return email
+
+    def clean_ico(self):
+        ico = self.cleaned_data['ico']
+        if models.Customer.objects.filter(ico=ico).exists():
+            raise ValidationError('Zákazník s tímto ičem je již registrován.')
+        return ico
 
     def clean(self):
         cleaned_data = super().clean()
-        if cleaned_data['password'] == cleaned_data['password1']:
-            return cleaned_data
-        else:
+        if cleaned_data['password'] != cleaned_data['password1']:
             raise ValidationError('Hesla se neshodují')
+        return cleaned_data

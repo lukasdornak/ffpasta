@@ -8,6 +8,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.forms import ValidationError
 from django.shortcuts import redirect
 from django.template.loader import get_template
+from django.utils.formats import date_format
 from django.utils.translation import gettext_lazy as _
 from django.utils.safestring import mark_safe
 
@@ -96,6 +97,11 @@ class DeliveryAdmin(admin.ModelAdmin):
                     'friday', 'saturday', 'sunday']
 
 
+@admin.register(models.Address)
+class AddressAdmin(admin.ModelAdmin):
+    filter_horizontal = ['delivery']
+
+
 class PriceInline(admin.TabularInline):
     model = models.Price
     form = forms.PriceAdminForm
@@ -104,6 +110,7 @@ class PriceInline(admin.TabularInline):
 
 class AddressInline(admin.TabularInline):
     model = models.Address
+    filter_horizontal = ['delivery']
     extra = 0
 
 
@@ -148,17 +155,17 @@ class HasIdIDokladFilter(admin.SimpleListFilter):
 @admin.register(models.Customer)
 class CustomerAdmin(admin.ModelAdmin):
     form = forms.CustomerAdminForm
-    list_display = ['name', 'ico', 'user', 'has_id_idoklad']
-    list_filter = ['delivery', HasIcoFilter, HasIdIDokladFilter]
-    filter_horizontal = ['delivery']
+    list_display = ['__str__', 'ico', 'user', 'has_id_idoklad', 'has_delivery', 'email_is_verified']
+    readonly_fields = ['email_is_verified']
+    list_filter = [HasIcoFilter, HasIdIDokladFilter]
     actions = ['sync_customers_to_idoklad', 'sync_customers_from_idoklad']
     inlines = [AddressInline, PriceInline]
     fieldsets = (
         (None, {
-            'fields': ('name', 'ico', 'delivery', 'user'),
+            'fields': ('name', 'ico', 'user'),
         }),
         ('Fakturační adresa', {
-            'fields': ('street', 'postal_code', 'city'),
+            'fields': ('street', 'postal_code', 'city', 'same_delivery_address'),
         }),
     )
 
@@ -167,6 +174,9 @@ class CustomerAdmin(admin.ModelAdmin):
 
     def has_id_idoklad(self, obj):
         return bool(obj.id_idoklad)
+
+    def has_delivery(self, obj):
+        return obj.delivery_addresses.all().exists() and not obj.delivery_addresses.filter(delivery=None)
 
     def sync_customers_to_idoklad(self, request, queryset):
         idoklad.sync_customers_to_idoklad(customers=queryset)
@@ -178,6 +188,8 @@ class CustomerAdmin(admin.ModelAdmin):
     sync_customers_from_idoklad.short_description = 'synchronizovat zákazníky podle kontaktů v iDokladu'
     has_id_idoklad.short_description = 'kontakt iDokladu'
     has_id_idoklad.boolean = True
+    has_delivery.short_description = 'závoz nastaven'
+    has_delivery.boolean = True
 
 
 class ItemInline(admin.TabularInline):
@@ -244,7 +256,8 @@ def clean_status(self):
 @admin.register(models.Order)
 class OrderAdmin(admin.ModelAdmin):
     date_hierarchy = 'date_required'
-    list_display = ['__str__', 'customer_note', 'customer', 'short_datetime', 'short_date', 'invoiced', 'delivery_note_number', 'status', 'my_note']
+    list_display = ['__str__', 'customer_note', 'customer', 'short_datetime', 'short_date',
+                    'invoiced', 'delivery_note_number', 'status', 'my_note']
     list_filter = (
         ('date_required', admin.DateFieldListFilter),
         ('date_required', FutureDateFieldFilter),
@@ -268,13 +281,14 @@ class OrderAdmin(admin.ModelAdmin):
     short_date.admin_order_field = 'date_required'
     short_date.short_description = 'Datum dodání'
 
-
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         return queryset.filter(datetime_ordered__isnull=False).order_by('date_required')
 
     def changelist_view(self, request, extra_context=None):
-        if not request.META.get('QUERY_STRING') and (request.META.get('HTTP_REFERER') is None or request.META.get('HTTP_REFERER').split('?')[0] != request.build_absolute_uri('?')):
+        if not request.META.get('QUERY_STRING') and (
+                request.META.get('HTTP_REFERER') is None or
+                request.META.get('HTTP_REFERER').split('?')[0] != request.build_absolute_uri('?')):
             return HttpResponseRedirect('?date_required__gte={}&date_required__lt={}'.format(datetime.date.today(), datetime.date.today() + datetime.timedelta(days=8)))
         return super().changelist_view(request, extra_context)
 
@@ -344,39 +358,41 @@ class OrderAdmin(admin.ModelAdmin):
         for order in queryset:
             delivery_note_number = order.create_delivery_note()
             if isinstance(delivery_note_number, int):
-                messages.info(request, f'Pro objednávku č. { order.id } byl vytvořen dodací list č. { delivery_note_number }')
+                messages.success(request, f'Pro objednávku č. { order.id } byl vytvořen dodací list č. { delivery_note_number }')
             else:
-                messages.error(request, delivery_note_number)
+                messages.warning(request, delivery_note_number)
 
     def download_delivery_note(self, request, queryset):
         queryset = queryset.filter(delivery_note_number__isnull=False)
         if queryset.exists():
-            delivery_note_html = get_template('ffpasta/delivery_notes.html').render(context={'object_list':queryset})
+            delivery_note_html = get_template('ffpasta/delivery_notes.html').render(context={'object_list': queryset})
             pdf_file = weasyprint.HTML(string=delivery_note_html).write_pdf()
             response = HttpResponse(pdf_file, content_type='application/pdf')
             response['Content-Disposition'] = 'attachment; filename="dodaci_listy.pdf"'
             return response
 
     def invoice_by_order(self, request, queryset):
-        err_list = models.Order.invoice_multiple(queryset)
-        if err_list:
-            for order in err_list:
-                messages.error(request, f'Objednávku č. { order.id } se nepodařilo vyfakturovat')
+        for order in queryset.filter(invoiced=True):
+            messages.info(request, f'Objednávka č. { order.id } již byla dříve vyfakturována.')
+        for order in queryset.filter(invoiced=False):
+            if order.invoice() == 0:
+                messages.success(request, f'Objednávka č. { order.id } byla vyfakturována.')
+            else:
+                messages.error(request, f'Objednávku č. { order.id } se nepodařilo vyfakturovat.')
 
     def invoice_by_delivery_notes(self, request, queryset):
-        queryset = queryset.filter(invoiced=False, delivery_note_number=None)
+        queryset = queryset.filter(invoiced=False, delivery_note_number__isnull=False)
         if not queryset.exists():
-            messages.error(request, f'Žádné nevyfakturované dodací listy nebyly vybrány')
+            messages.warning(request, f'Žádné nevyfakturované dodací listy nebyly vybrány')
             return None
-        if queryset.exlude(customer=queryset.first().customer).exists():
-            messages.error(request, f'Vybrané dodací listy jsou pro různé zákazníky')
+        if queryset.exclude(customer=queryset.first().customer).exists():
+            messages.warning(request, f'Vybrané dodací listy jsou pro různé zákazníky')
             return None
         response = models.Order.invoice_delivery_notes(queryset)
         if response:
             messages.error(request, f'Dodací listy se nepodařilo vyfakturovat')
         else:
             messages.info(request, f'Dodací listy byly úspěšně vyfakturovány')
-
 
     reject.short_description = 'odmítnout'
     confirm.short_description = 'potvrdit'
@@ -385,6 +401,7 @@ class OrderAdmin(admin.ModelAdmin):
     download_delivery_note.short_description = 'stáhnout dodací listy'
     invoice_by_order.short_description = 'fakturovat jednotlivé obědnávky'
     invoice_by_delivery_notes.short_description = 'fakturovat dodací listy'
+
 
 class TodayDeliveryOrder(models.Order):
     class Meta:
@@ -412,7 +429,9 @@ class TodayDeliveryOrderAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
-        return queryset.filter(datetime_ordered__isnull=False, date_required=datetime.date.today(), status__gte=models.Order.CONFIRMED)
+        return queryset.filter(datetime_ordered__isnull=False,
+                               date_required=datetime.date.today(),
+                               status__gte=models.Order.CONFIRMED)
 
     def has_add_permission(self, request):
         return False
@@ -530,8 +549,9 @@ class ProductionFutureDateFieldFilter(admin.FieldListFilter):
 
 @admin.register(OrderedProduct)
 class OrderedProductAdmin(admin.ModelAdmin):
-    list_display = ['production_link', 'next_1st_day_to_do', 'next_2nd_day_to_do', 'next_3rd_day_to_do', 'in_stock']
-    ordering = ['-sauce', 'name',]
+    list_display = ['production_link', 'next_1st_day_to_do', 'next_2nd_day_to_do', 'next_3rd_day_to_do',
+                    'next_3_days_to_do', 'in_stock']
+    ordering = ['-sauce', 'name']
     list_display_links = None
     list_select_related = True
 
@@ -556,13 +576,26 @@ class OrderedProductAdmin(admin.ModelAdmin):
             order__date_required__exact=datetime.date.today() + datetime.timedelta(days=3),
         ).aggregate(Sum('quantity'))['quantity__sum']
 
+    def next_3_days_to_do(self, obj):
+        return models.Item.objects.filter(
+            product=obj,
+            order__status__exact=models.Order.CONFIRMED,
+            order__date_required__gt=datetime.date.today(),
+            order__date_required__lte=datetime.date.today() + datetime.timedelta(days=3),
+        ).aggregate(Sum('quantity'))['quantity__sum']
+
     def production_link(self, obj):
-        return mark_safe(f'<a href="/admin/ffpasta/stocktransaction/add/?product={ obj.id }&quantity=25&transaction_type={ models.StockTransaction.PRODUCTION }"><b>{ obj.name }</b></a>')
+        return mark_safe(f'<a href="/admin/ffpasta/stocktransaction/add/?product={ obj.id }\
+                &quantity=25&transaction_type={ models.StockTransaction.PRODUCTION }"><b>{ obj.name }</b></a>')
 
     production_link.short_description = 'produkt'
-    next_1st_day_to_do.short_description = (datetime.date.today() + datetime.timedelta(days=1)).strftime('%A, %-d. %-m.')
-    next_2nd_day_to_do.short_description = (datetime.date.today() + datetime.timedelta(days=2)).strftime('%A, %-d. %-m.')
-    next_3rd_day_to_do.short_description = (datetime.date.today() + datetime.timedelta(days=3)).strftime('%A, %-d. %-m.')
+    next_1st_day_to_do.short_description = date_format(
+        (datetime.date.today() + datetime.timedelta(days=1)), format='l, j. n.', use_l10n=True)
+    next_2nd_day_to_do.short_description = date_format(
+        (datetime.date.today() + datetime.timedelta(days=2)), format='l, j. n.', use_l10n=True)
+    next_3rd_day_to_do.short_description = date_format(
+        (datetime.date.today() + datetime.timedelta(days=3)), format='l, j. n.', use_l10n=True)
+    next_3_days_to_do.short_description = 'celkem vyrobit'
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
@@ -582,7 +615,8 @@ class OrderedProductAdmin(admin.ModelAdmin):
 class ProductionOrderedProductAdmin(OrderedProductAdmin):
 
     def production_link(self, obj):
-        return mark_safe(f'<a href="/produkce/ffpasta/stocktransaction/add/?product={ obj.id }&quantity=25&transaction_type={ models.StockTransaction.PRODUCTION }"><b>{ obj.name }</b></a>')
+        return mark_safe(f'<a href="/produkce/ffpasta/stocktransaction/add/?product={ obj.id }\
+            &quantity=25&transaction_type={ models.StockTransaction.PRODUCTION }"><b>{ obj.name }</b></a>')
 
     def has_module_permission(self, request):
         return True
@@ -667,8 +701,11 @@ class ToDoOrderAdmin(admin.ModelAdmin):
                                ).order_by('date_required')
 
     def changelist_view(self, request, extra_context=None):
-        if not request.META.get('QUERY_STRING') and (request.META.get('HTTP_REFERER') is None or request.META.get('HTTP_REFERER').split('?')[0] != request.build_absolute_uri('?')):
-            return HttpResponseRedirect('?date_required__gte={}&date_required__lt={}'.format(datetime.date.today(), datetime.date.today() + datetime.timedelta(days=8)))
+        if not request.META.get('QUERY_STRING') and (
+                request.META.get('HTTP_REFERER') is None or
+                request.META.get('HTTP_REFERER').split('?')[0] != request.build_absolute_uri('?')):
+            return HttpResponseRedirect('?date_required__gte={}&date_required__lt={}'.format(
+                datetime.date.today(), datetime.date.today() + datetime.timedelta(days=8)))
         return super().changelist_view(request, extra_context)
 
     def has_add_permission(self, request):

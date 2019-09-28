@@ -1,0 +1,57 @@
+{% extends 'ffpasta/base.html' %}{% load static %}{% load l10n %}
+
+{% block title %}{{ block.super }} | Zákazník{% endblock %}
+
+{% block content %}
+    <div class="base_form">
+        <h1 class="bordered">Zákazník</h1>
+        {% if messages %}{% for message in messages %}
+        <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}{% endif %}
+        <form method="get" action="/nastaveni/">
+            <div>
+                <label>E-mail</label>
+            </div>
+            <div>
+                <input disabled="disabled" value="{{ object.user.email }}">
+            </div>
+            <div>
+                <label>Firma</label>
+            </div>
+            <div>
+                <input disabled="disabled" value="{{ object.name|default_if_none:"" }}">
+            </div>
+            <div>
+                <label>Ič</label>
+            </div>
+            <div>
+                <input disabled="disabled" value="{{ object.ico|default_if_none:"" }}">
+            </div>
+            <div>
+                <label>Fakturační adresa</label>
+            </div>
+            <div>
+            {% if object.has_invoice_address %}
+                {% localize off %}
+                <input disabled="disabled" value="{{ object.street|default_if_none:"" }}, {{ object.postal_code|default_if_none:"" }} {{ object.city|default_if_none:"" }}">
+                {% endlocalize %}
+            {% else %}
+                <input disabled="disabled" value="">
+            {% endif %}
+            </div>
+            {% for address in object.delivery_addresses.all %}
+            <div>
+                <label>Adresa dodací</label>
+            </div>
+            <div>
+            {% localize off %}
+                <input disabled="disabled" value="{{ address.street|default_if_none:"" }}, {{ address.postal_code|default_if_none:"" }} {{ address.city|default_if_none:"" }}">
+            {% endlocalize %}
+            </div>
+            {% endfor %}
+            <dvi>
+                <input type="submit" value="Upravit">
+            </dvi>
+        </form>
+    </div>
+{% endblock %}
