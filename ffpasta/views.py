@@ -393,7 +393,9 @@ def verify_email(request, id, token):
                 customer.verify_email()
                 login(request, user=customer.user)
                 messages.add_message(request, messages.SUCCESS, mark_safe('Vaše e-mailová adresa byla úspěšně ověřena.'))
-                return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
+                if customer.has_invoice_address():
+                    return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
+                return HttpResponseRedirect('/nastaveni/')
             title = 'Pozdě.'
             messages.add_message(request, messages.ERROR, mark_safe('Je nám líto, ale platnost odkazu vypršela.<br>'\
                                                                     f'<a href=/nove-overeni-emailu/{ id }/>zaslat nový odkaz</a>'))

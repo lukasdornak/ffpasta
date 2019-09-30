@@ -199,7 +199,7 @@ class RegistrationForm(forms.Form):
     password1 = forms.CharField(label='Ověření hesla', max_length=64, min_length=8, widget=forms.PasswordInput, required=True)
 
     def clean_email(self):
-        email = self.cleaned_data['email']
+        email = self.cleaned_data['email'].lower()
         if User.objects.filter(email=email).exists():
             raise ValidationError('Uživatel s tímto emailem již existuje.')
         return email
