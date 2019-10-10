@@ -140,7 +140,7 @@ header {
 }
 
 .logo_mpmr img {
-  height: 50px;
+  height: 80px;
 }
 
 #social_foot img {
@@ -837,7 +837,7 @@ ul.errorlist {
     margin-right: 5px;
   }
   #social_head img {
-    height: 50px;
+    height: 80px;
   }
   #social_head a {
     display: none;
