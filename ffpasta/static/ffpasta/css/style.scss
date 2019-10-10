@@ -11,6 +11,7 @@ $light: #EAE4DC;
 // rgb(234,228,220)
 $color-green: #b0e4a4;
 $color-red: #ffada4;
+$color-gray: #c7d3df;
 
 html {
     font-size: 16px;
@@ -89,6 +90,11 @@ header {
     height: 80px;
 }
 
+#menu_button_placeholder {
+    width: 40px;
+    margin: 20px;
+    cursor: pointer;
+}
 #menu_button {
     margin: 20px;
     cursor: pointer;
@@ -445,6 +451,7 @@ h3.item_name {
 }
 
 #max_width {
+    padding-top: 110px;
     width: 90%;
     max-width: 1000px;
     margin: 0 auto;
@@ -462,10 +469,10 @@ h3.item_name {
 }
 
 form {
-    textarea, select, input {
+    textarea, select, input:not([type="checkbox"]) {
         height: 1.9em;
         padding: 0 0.5em;
-        margin: 0.3em auto;
+        margin: 0.1em auto 0.3em auto;
         border: none;
         background: white;
         font-size: 20px;
@@ -476,9 +483,8 @@ form {
         width: initial;
         padding: 0.1em 0.4em;
         border: 2px solid black;
-        margin: 0 auto;
         cursor: pointer;
-        margin: 0 0.5em;
+        margin: 0.5em;
     }
     textarea {
         height: initial;
@@ -499,6 +505,13 @@ form#new_order_form {
     width: 500px;
     margin: 0 auto;
 }
+
+label, .new_order_label {
+    text-align: left;
+    padding-left: 0.5em;
+    margin: 0;
+}
+
 .new_order_row {
     width: 100%;
     display: flex;
@@ -532,15 +545,18 @@ form#new_order_form {
     box-sizing: border-box;
     cursor: pointer;
 }
+
 #new_order_form_buttons {
     text-align: center;
     > div {
+        text-align: center;
         display: inline-block;
         padding: 0;
         font-size: 36px;
         width: 1em;
         height: 1em;
         margin: 0.5em;
+        line-height: 0.95em;
         cursor: pointer;
         -webkit-transition: background-color 500ms;
         -moz-transition: background-color 500ms;
@@ -573,6 +589,7 @@ table.overview {
     }
     tr.history td{
         background-color: #f5f5d0;
+        background-color: $color-gray;
         color: #555
     }
     tr.confirmed td {
@@ -587,11 +604,50 @@ table.overview {
         padding: 0;
     }
 }
-#password_form {
-    max-width: 400px;
-    margin: 0 auto;
-    input {
-        margin: 0.7em auto;
+
+.base_form {
+    div {
+        max-width: 340px;
+        margin: 0.2em auto;
+        text-align: left;
+        &.center {
+            text-align: center;
+        }
+    }
+}
+
+ul.errorlist {
+    margin-top: 0;
+}
+
+#legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    div {
+        display: inline-block;
+    }
+    .legend {
+        line-height: 100%;
+        display: inline-block;
+        left: 0;
+        margin-left: 0.5em;
+        margin-right: 0.5em;
+        width: 1.6em;
+        height: 1.6em;
+        border-radius: 2em;
+        &.pending {
+            background-color: white;
+        }
+        &.confirmed {
+            background-color: $color-green;
+        }
+        &.refused {
+            background-color: $color-red;
+        }
+        &.history {
+            background-color: $color-gray;
+        }
     }
 }
 
@@ -775,7 +831,7 @@ table.overview {
     #items_page {
         width: 80%;
     }
-    #menu_button {
+    #menu_button, menu_button_placeholder {
         display: none;
     }
     #modal {

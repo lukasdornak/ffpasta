@@ -2,10 +2,6 @@
 
 {% block title %}{{ block.super }} | {{ title }}{% endblock %}
 
-{% block header_left %}{% endblock %}
-
-{% block header_right %}{% endblock %}
-
 {% block content %}
     <h1 class="bordered">{{ title }}</h1>{% for message in messages %}
     <p>{{ message }}</p>{% endfor %}

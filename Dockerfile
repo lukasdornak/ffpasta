@@ -9,10 +9,17 @@ COPY auth/management/__init__.py /usr/local/lib/python3.7/site-packages/django/c
 
 ENV DJANGO_SETTINGS_MODULE=settings
 
-RUN apk add --update --no-cache jpeg-dev; \
+RUN apk add --update --upgrade --no-cache \
+        cairo-dev \
+        pango-dev \
+        gdk-pixbuf \
+        jpeg-dev; \
     apk add --update --no-cache --virtual .build-deps \
 		build-base \
-		zlib-dev; \
+		musl-dev \
+		zlib-dev \
+		libffi-dev \
+		gdk-pixbuf-dev; \
 	pip3 install --no-cache-dir -r /app/requirements.txt; \
 	apk del .build-deps
 

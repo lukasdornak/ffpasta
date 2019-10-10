@@ -85,16 +85,13 @@ $(function(){
     });
     $("form").submit(function(event) {
         var initial = $('#id_volume_set-INITIAL_FORMS').val();
-        console.log(initial);
         var total = $('#id_volume_set-TOTAL_FORMS').val();
-        console.log(total);
         if (total<initial){
             for(i=total; i<initial; i++){
                 $('#items_formset').append('<input type="checkbox" name="volume_set-' + i + '-DELETE" id="id_volume_set-' + i + '-DELETE" checked=checked>');
             }
         }
         $('input[name=volume_set-TOTAL_FORMS]').val(initial);
-        console.log($('form').html());
         return true;
     });
 })

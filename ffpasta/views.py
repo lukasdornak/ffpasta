@@ -9,17 +9,21 @@ from django.http import HttpResponseRedirect, Http404
 from django.shortcuts import render
 from django.utils.html import mark_safe
 from django.utils.crypto import get_random_string
-from django.views.generic import FormView, ListView, DetailView, UpdateView, CreateView
-from datetime import datetime, date, timedelta
+from django.views.generic import FormView, ListView, DetailView, UpdateView
+from datetime import datetime
 from . import forms, models
 
-from django.db.models import OuterRef, Subquery, Sum, Q
+
+class NoLabelSuffixMixin:
+    def get_form_kwargs(self):
+        form_kwargs = super().get_form_kwargs()
+        form_kwargs.update({'label_suffix': ''})
+        return form_kwargs
 
 
 class Home(ListView):
     model = models.Section
     template_name = 'ffpasta/index.html'
-
 
     def get_context_data(self, *args, **kwargs):
         context_data = super().get_context_data(*args, **kwargs)
@@ -42,22 +46,44 @@ class ContactView(FormView):
         return HttpResponseRedirect(self.request.POST.get('from_url'))
 
 
-class LoginView(LoginView):
+class LoginView(NoLabelSuffixMixin, LoginView):
     template_name = 'ffpasta/login.html'
-    contact_form = forms.ContactForm
 
     def get(self, request, *args, **kwargs):
         logout(request)
         return super().get(request, *args, **kwargs)
 
+    def post(self, request, *args, **kwargs):
+        if request.POST.get('register'):
+            return HttpResponseRedirect(f'/registrace/')
+        return super().post(request, *args, **kwargs)
+
     def get_success_url(self):
-        password = self.request.POST.get('password')
-        if len(password) < 8:
-            messages.add_message(self.request, messages.INFO,
-                                 'Vítejte v objednávkovém systému FFpasta. Než začnete objednávat, '
-                                 'nastavte si, prosím, nové heslo. Děkujeme, za pochopení')
+        if len(self.request.POST.get('password')) < 8:
             return '/zmena-hesla/'
         return super().get_success_url()
+
+
+class RegistrationView(NoLabelSuffixMixin, FormView):
+    form_class = forms.RegistrationForm
+    template_name = 'ffpasta/registration.html'
+
+    def form_valid(self, form):
+        customer = models.Customer.self_register(email=form.cleaned_data['email'],
+                                                 ico=form.cleaned_data['ico'],
+                                                 password=form.cleaned_data['password'])
+        if customer:
+            customer.send_verification_code()
+            login(self.request, customer.user)
+            messages.add_message(self.request, messages.INFO,
+                                 "Děkujeme, za Vaši registraci.<br> Na Vaši e-mailovou adresu jsme odeslali ověřovací odkaz.")
+            return HttpResponseRedirect('/nastaveni/')
+        self.render_to_response(self.get_context_data(form=form))
+
+    def post(self, request, *args, **kwargs):
+        if request.POST.get('login'):
+            return HttpResponseRedirect(f'/prihlaseni/')
+        return super().post(request, *args, **kwargs)
 
 
 class ProductDetailView(DetailView):
@@ -83,6 +109,86 @@ class CustomerRequiredMixin:
         raise Http404("Zákazník nenalezen")
 
 
+class VerifiedEmailRequiredMixin:
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.customer.email_is_verified:
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            return HttpResponseRedirect('/overte-svou-adresu/')
+
+
+class DeliveryAddressRequiredMixin:
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.customer.delivery_addresses.all().exists():
+            return super().dispatch(request, *args, **kwargs)
+        else:
+            messages.add_message(request, messages.INFO, "Než začnete objednávat, nastavte si doručovací adresu.")
+            return HttpResponseRedirect('/nastaveni/')
+
+
+class CustomerDetailView(LoginRequiredMixin, CustomerRequiredMixin, DetailView):
+    model = models.Customer
+    template_name = 'ffpasta/customer_detail.html'
+
+    def get_object(self, queryset=None):
+        return self.request.user.customer
+
+
+class CustomerUpdateView(LoginRequiredMixin, CustomerRequiredMixin, NoLabelSuffixMixin, UpdateView):
+    model = models.Customer
+    fields = ['name', 'street', 'postal_code', 'city', 'same_delivery_address']
+    formset_class = forms.AddressFormSet
+    success_url = '/zakaznik/'
+
+    def get_formset(self, **kwargs):
+        formset = self.formset_class(queryset=self.object.delivery_addresses.all(), **kwargs)
+        for form in formset:
+            if form.instance.id:
+                form.fields['DELETE'].is_boolean = True
+                form.fields['DELETE'].label = f'{ form.instance.street }, { form.instance.postal_code } { form.instance.city }'
+            else:
+                form.fields['DELETE'].widget = forms.forms.HiddenInput()
+        return formset
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        self.formset = self.get_formset()
+        return super().get(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        return self.request.user.customer
+
+    def get_form(self, form_class=None):
+        form = super().get_form(self.form_class)
+        form.fields['name'].required = True
+        form.fields['street'].required = True
+        form.fields['postal_code'].required = True
+        form.fields['city'].required = True
+        form.fields['same_delivery_address'].is_boolean = True
+        return form
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(formset=self.formset)
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        fromset_data = self.request.POST.copy()
+        for i in range(int(fromset_data.get('form-TOTAL_FORMS', 6))):
+            if fromset_data.get(f'form-{ i }-street'):
+                fromset_data[f'form-{ i }-customer'] = str(self.object.id)
+        self.formset = self.get_formset(data=fromset_data)
+        return super().post(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        if form.cleaned_data['same_delivery_address'] is True:
+            return super().form_valid(form)
+        if self.formset.is_valid():
+            self.object = form.save()
+            self.formset.save()
+            return HttpResponseRedirect(self.get_success_url())
+        return self.render_to_response(self.get_context_data(form=form, formset=self.formset))
+
+
 class OrderListView(LoginRequiredMixin, CustomerRequiredMixin, ListView):
     model = models.Order
 
@@ -91,7 +197,7 @@ class OrderListView(LoginRequiredMixin, CustomerRequiredMixin, ListView):
         return queryset.filter(customer=self.request.user.customer.pk, datetime_ordered__isnull=False).order_by('-date_required')
 
 
-class OrderCreateUpdateView(LoginRequiredMixin, CustomerRequiredMixin, UpdateView):
+class OrderCreateUpdateView(LoginRequiredMixin, CustomerRequiredMixin, DeliveryAddressRequiredMixin, UpdateView):
     model = models.Order
     form_class = forms.OrderCreateUpdateForm
     formset_class = forms.ItemFormSet
@@ -101,7 +207,7 @@ class OrderCreateUpdateView(LoginRequiredMixin, CustomerRequiredMixin, UpdateVie
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         if self.object:
-            self.formset = self.formset_class(initial=models.Item.objects.filter(order=self.object).values('product', 'quantity'))
+            self.formset = self.formset_class(initial=self.object.item_set.values('product', 'quantity'))
         else:
             self.formset = self.formset_class()
         return super().get(request, *args, **kwargs)
@@ -109,7 +215,7 @@ class OrderCreateUpdateView(LoginRequiredMixin, CustomerRequiredMixin, UpdateVie
     def post(self, request, *args, **kwargs):
         if 'back_to_overview' in request.POST:
             return HttpResponseRedirect('/objednavky/')
-        self.formset = self.formset_class(data = self.request.POST)
+        self.formset = self.formset_class(data=self.request.POST)
         self.initial = {'customer': self.request.user.customer.pk}
         self.object = self.get_object()
         return super().post(request, *args, **kwargs)
@@ -128,13 +234,18 @@ class OrderCreateUpdateView(LoginRequiredMixin, CustomerRequiredMixin, UpdateVie
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
         form.fields['customer'].disabled = True
+        address_choices = models.Address.objects.filter(customer=self.request.user.customer)
+        form.fields['address'].queryset = address_choices
+        form.fields['address'].empty_label = None
+        if address_choices.count() < 2:
+            self.hide_addresses = True
         return form
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(formset=self.formset)
 
     def dates(self):
-        return self.request.user.customer.get_dates()
+        return {address.id: address.get_dates() for address in self.request.user.customer.delivery_addresses.all()}
 
     def form_valid(self, form):
         if self.formset.is_valid():
@@ -145,7 +256,7 @@ class OrderCreateUpdateView(LoginRequiredMixin, CustomerRequiredMixin, UpdateVie
         return self.render_to_response(self.get_context_data(form=form, formset=self.formset))
 
 
-class OrderFinishView(LoginRequiredMixin, CustomerRequiredMixin, UpdateView):
+class OrderFinishView(LoginRequiredMixin, CustomerRequiredMixin, DeliveryAddressRequiredMixin, VerifiedEmailRequiredMixin, UpdateView):
     model = models.Order
     fields = ['datetime_ordered']
     success_url = '/objednavky/'
@@ -190,7 +301,7 @@ class ForgottenPasswordView(FormView):
                 messages.add_message(self.request, messages.ERROR, 'Omlouváme se, ale nepodařilo se odeslat odkaz pro obnovu hesla. Kontaktujte nás, prosím, na e-mail: info@ffpasta.cz')
             return self.render_to_response(self.get_context_data())
         else:
-            messages.add_message(self.request, messages.ERROR, 'Zatím nemáme žádného zákazníka s tímto emailem. Chcete-li se jím stát, napište nám!')
+            messages.add_message(self.request, messages.ERROR, 'Zatím nemáme žádného zákazníka s tímto emailem. Chcete-li se jím stát, <a href="/registrace/">zaregistrujte se</a> !')
             return self.render_to_response(self.get_context_data(form=form))
 
 
@@ -263,3 +374,39 @@ def confirm_order(request, id, token):
         return render(request, 'ffpasta/message.html', context={'title':title})
     else:
         raise Http404("Stránka nenalezena.")
+
+
+def resend_email_verification_token(request, id):
+    customer = models.Customer.objects.filter(id=id).first()
+    token = cache.get(f'EMAIL_VERIFICATION_TOKEN_FOR_CUSTOMER_{ id }')
+    if customer and not (customer.email_is_verified or token):
+        customer.send_verification_code()
+        return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
+    return Http404("Stránka nenalezena.")
+
+
+def verify_email(request, id, token):
+    if id and token:
+        customer = models.Customer.objects.filter(id=id).first()
+        if customer and not customer.email_is_verified:
+            if token == cache.get(f'EMAIL_VERIFICATION_TOKEN_FOR_CUSTOMER_{ id }'):
+                customer.verify_email()
+                login(request, user=customer.user)
+                messages.add_message(request, messages.SUCCESS, mark_safe('Vaše e-mailová adresa byla úspěšně ověřena.'))
+                if customer.has_invoice_address():
+                    return HttpResponseRedirect(settings.LOGIN_REDIRECT_URL)
+                return HttpResponseRedirect('/nastaveni/')
+            title = 'Pozdě.'
+            messages.add_message(request, messages.ERROR, mark_safe('Je nám líto, ale platnost odkazu vypršela.<br>'\
+                                                                    f'<a href=/nove-overeni-emailu/{ id }/>zaslat nový odkaz</a>'))
+            return render(request, 'ffpasta/message.html', context={'title': title})
+    raise Http404("Stránka nenalezena.")
+
+
+def email_verification_required(request):
+    if request.user.is_anonymous or request.user.customer.email_is_verified:
+        raise Http404("Stránka nenalezena.")
+    title = 'Ověření e-mailu'
+    messages.add_message(request, messages.ERROR, mark_safe('Na Váši e-mailovou adresu jsme Vám zaslali ověřovací odkaz.<br>'\
+                                                            f'<a href=/nove-overeni-emailu/{ request.user.customer.id }/>zaslat nový odkaz</a>'))
+    return render(request, 'ffpasta/message.html', context={'title': title})

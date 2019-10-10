@@ -2,11 +2,13 @@
 
 {% block title %}{{ block.super }} | Přehled objednávek{% endblock %}
 
-{% block header_left %}<a href="/nova-objednavka/" id="new_order_link" class="bordered">NOVÁ&nbsp;OBJEDNÁVKA</a>{% endblock %}
-
 {% block content %}
-    <h1 class="bordered">Přehled objednávek</h1>{% if messages %}{% for message in messages %}
-    <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>{% endfor %}{% endif %}{% if object_list %}
+    <h1 class="bordered">Přehled objednávek</h1>
+    {% if messages %}
+        {% for message in messages %}
+    <p{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</p>
+        {% endfor %}
+    {% endif %}
     <table class="overview">
         <thead>
             <tr>
@@ -23,13 +25,21 @@
                         <path d="M 0 5 L 100 5" fill="none" stroke="black" stroke-width=3 stroke-dasharray="2, 2"></path>
                     </svg>
                 </td>
-            </tr>{% for order in object_list %}
+            </tr>
+            {% if object_list %}
+            {% for order in object_list %}
             <tr class="{% if order.is_history %}history{% elif order.status >= 2 %}confirmed{% endif %}{% if not order.status %} rejected{% endif %}">
                 <td style="text-align: center">{{ order.datetime_ordered|date:"j. n.  H:i" }}</td>
                 <td>{{ order.items_to_str }}</td>
                 <td style="text-align: right">{{ order.get_total_price }} Kč</td>
                 <td style="text-align: center">{{ order.date_required|date:"l j. n." }}</td>
-            </tr>{% endfor %}
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="4" style="text-align:center">Zatím žádné objednávky.</td>
+            </tr>
+            {% endif %}
             <tr class="dashed-line">
                 <td colspan="4">
                     <svg width="100%" height="100%" viewBox="0 0 100 10" preserveAspectRatio="none">
@@ -38,5 +48,11 @@
                 </td>
             </tr>
         </tbody>
-    </table>{% else %}<div>žádné objednávky</div>{% endif %}
+    </table>
+    <div id="legend">
+        <div class="legend pending"></div><div>čeká na potvrzení</div>
+        <div class="legend confirmed"></div><div>potvrzeno</div>
+        <div class="legend refused"></div><div>zamítnuto</div>
+        <div class="legend history"></div><div>historie</div>
+    </div>
 {% endblock %}
