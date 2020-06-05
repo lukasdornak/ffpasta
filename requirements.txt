@@ -1,5 +1,5 @@
 requests
-Django==2.1.5
+Django==2.2.13
 django-ckeditor
 Pillow==5.3.0
 WeasyPrint
